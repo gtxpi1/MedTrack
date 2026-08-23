@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useEffect, useState, useCallback } from 'react';
 import { Medication, ScheduledDoseItem, DoseRecord } from '../types/medication';
 import { MedicationService, defaultMedicationService } from '../services/MedicationService';
 
@@ -172,10 +172,4 @@ export const MedicationProvider: React.FC<MedicationProviderProps> = ({
   );
 };
 
-export const useMedications = (): MedicationContextValue => {
-  const context = useContext(MedicationContext);
-  if (!context) {
-    throw new Error('useMedications must be used within a MedicationProvider');
-  }
-  return context;
-};
+export { MedicationContext };

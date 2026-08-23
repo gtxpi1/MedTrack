@@ -5,6 +5,7 @@ import { Icon } from '../common/Icon';
 interface SidebarProps {
   currentView: AppView;
   onNavigate: (view: AppView) => void;
+  onOpenAddModal?: () => void;
   pendingDoseCount: number;
   lowSupplyCount: number;
 }
@@ -12,6 +13,7 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({
   currentView,
   onNavigate,
+  onOpenAddModal,
   pendingDoseCount,
   lowSupplyCount
 }) => {
@@ -36,6 +38,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <span>Daily Care Companion</span>
         </div>
       </div>
+
+      {/* Quick Add Button */}
+      {onOpenAddModal && (
+        <div style={{ padding: '1rem 0 0 0' }}>
+          <button
+            type="button"
+            className="btn btn-primary"
+            style={{ width: '100%', gap: '0.5rem', fontWeight: 700 }}
+            onClick={onOpenAddModal}
+          >
+            <Icon name="plus" size={18} />
+            <span>Add Medication</span>
+          </button>
+        </div>
+      )}
 
       {/* Navigation List */}
       <nav className="sidebar-nav">

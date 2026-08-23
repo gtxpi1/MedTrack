@@ -31,6 +31,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
       <Sidebar
         currentView={currentView}
         onNavigate={onNavigate}
+        onOpenAddModal={onOpenAddModal}
         pendingDoseCount={stats.pendingCount}
         lowSupplyCount={lowSupplyMedications.length}
       />
