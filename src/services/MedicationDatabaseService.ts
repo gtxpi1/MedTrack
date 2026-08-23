@@ -19,20 +19,47 @@ export interface DrugSuggestion {
 export const BUILTIN_MEDICATION_DIRECTORY: DrugSuggestion[] = [
   // --- Antipsychotics & Mood Stabilizers ---
   {
-    name: 'Quetiapine',
-    genericName: 'Quetiapine Fumarate',
-    brandName: 'Seroquel / Seroquel XR',
+    name: 'Quetiapine XR',
+    genericName: 'Quetiapine Fumarate Extended-Release',
+    brandName: 'Seroquel XR',
     form: 'tablet',
-    commonStrengths: ['25 mg', '50 mg', '100 mg', '150 mg', '200 mg', '300 mg', '400 mg'],
+    commonStrengths: ['50 mg', '150 mg', '200 mg', '300 mg', '400 mg'],
     defaultDoseUnit: 'tablet',
-    category: 'Atypical Antipsychotic / Mood'
+    category: 'Atypical Antipsychotic (Extended-Release XR)'
+  },
+  {
+    name: 'Quetiapine XL',
+    genericName: 'Quetiapine Prolonged-Release',
+    brandName: 'Seroquel XL',
+    form: 'tablet',
+    commonStrengths: ['50 mg', '150 mg', '200 mg', '300 mg', '400 mg'],
+    defaultDoseUnit: 'tablet',
+    category: 'Atypical Antipsychotic (Prolonged-Release XL)'
+  },
+  {
+    name: 'Quetiapine (IR)',
+    genericName: 'Quetiapine Fumarate (Immediate-Release)',
+    brandName: 'Seroquel',
+    form: 'tablet',
+    commonStrengths: ['25 mg', '50 mg', '100 mg', '200 mg', '300 mg'],
+    defaultDoseUnit: 'tablet',
+    category: 'Atypical Antipsychotic (Immediate-Release)'
+  },
+  {
+    name: 'Seroquel XR',
+    genericName: 'Quetiapine Extended-Release',
+    brandName: 'Seroquel XR',
+    form: 'tablet',
+    commonStrengths: ['50 mg', '150 mg', '200 mg', '300 mg', '400 mg'],
+    defaultDoseUnit: 'tablet',
+    category: 'Atypical Antipsychotic (XR)'
   },
   {
     name: 'Seroquel',
     genericName: 'Quetiapine Fumarate',
-    brandName: 'Seroquel / Seroquel XR',
+    brandName: 'Seroquel',
     form: 'tablet',
-    commonStrengths: ['25 mg', '50 mg', '100 mg', '150 mg', '200 mg', '300 mg', '400 mg'],
+    commonStrengths: ['25 mg', '50 mg', '100 mg', '200 mg', '300 mg'],
     defaultDoseUnit: 'tablet',
     category: 'Atypical Antipsychotic'
   },
