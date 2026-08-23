@@ -26,7 +26,7 @@ export interface MedicationContextValue {
   addMedication: (data: Omit<Medication, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Medication>;
   updateMedication: (med: Medication) => Promise<Medication>;
   deleteMedication: (id: string) => Promise<boolean>;
-  updateSupply: (medicationId: string, count: number) => Promise<void>;
+  updateSupply: (medicationId: string, count: number, lowThreshold?: number) => Promise<void>;
   refillMedication: (medicationId: string, amount?: number) => Promise<void>;
   resetSampleData: () => Promise<void>;
   refresh: () => Promise<void>;
@@ -115,8 +115,8 @@ export const MedicationProvider: React.FC<MedicationProviderProps> = ({
     return result;
   };
 
-  const updateSupply = async (medicationId: string, count: number) => {
-    await service.updateSupply(medicationId, count);
+  const updateSupply = async (medicationId: string, count: number, lowThreshold?: number) => {
+    await service.updateSupply(medicationId, count, lowThreshold);
     await refresh();
   };
 

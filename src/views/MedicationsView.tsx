@@ -1,18 +1,21 @@
 import React, { useState } from 'react';
 import { useMedications } from '../hooks/useMedications';
+import { Medication } from '../types/medication';
 import { formatTime12h } from '../utils/dateUtils';
 import { calculateDaysRemaining, isLowSupply } from '../utils/supplyUtils';
 import { MedicationDatabaseService } from '../services/MedicationDatabaseService';
 import { Badge } from '../components/common/Badge';
 import { Icon } from '../components/common/Icon';
+import { AdjustSupplyModal } from '../components/medications/AdjustSupplyModal';
 
 interface MedicationsViewProps {
   onOpenAddModal: () => void;
 }
 
 export const MedicationsView: React.FC<MedicationsViewProps> = ({ onOpenAddModal }) => {
-  const { medications, deleteMedication, refillMedication, isLoading } = useMedications();
+  const { medications, deleteMedication, refillMedication, updateSupply, isLoading } = useMedications();
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedMedForSupply, setSelectedMedForSupply] = useState<Medication | null>(null);
 
   if (isLoading) {
     return (
@@ -185,8 +188,10 @@ export const MedicationsView: React.FC<MedicationsViewProps> = ({ onOpenAddModal
                   )}
                 </div>
 
-                {/* Supply summary */}
+                {/* Supply summary - Clickable to edit */}
                 <div
+                  onClick={() => setSelectedMedForSupply(med)}
+                  title="Click to edit pill count"
                   style={{
                     backgroundColor: low ? 'var(--warning-bg)' : 'var(--slate-50)',
                     padding: '0.625rem 0.875rem',
@@ -194,13 +199,22 @@ export const MedicationsView: React.FC<MedicationsViewProps> = ({ onOpenAddModal
                     fontSize: '0.8125rem',
                     display: 'flex',
                     justifyContent: 'space-between',
-                    alignItems: 'center'
+                    alignItems: 'center',
+                    cursor: 'pointer',
+                    border: '1px dashed transparent',
+                    transition: 'border-color 0.15s ease'
                   }}
+                  onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'var(--primary-500)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'transparent')}
                 >
                   <span style={{ color: low ? 'var(--warning-text)' : 'var(--slate-700)', fontWeight: 600 }}>
-                    {med.supply.currentSupply} {med.supply.supplyUnit} left (~{days} days)
+                    {med.supply.currentSupply} {med.supply.supplyUnit} left (~{days} days) ✏️
                   </span>
-                  {low && <span className="badge badge-warning">Low</span>}
+                  {low ? (
+                    <span className="badge badge-warning">Low</span>
+                  ) : (
+                    <span className="text-xs text-muted" style={{ textDecoration: 'underline' }}>Edit</span>
+                  )}
                 </div>
 
                 {/* Instructions */}
@@ -211,15 +225,28 @@ export const MedicationsView: React.FC<MedicationsViewProps> = ({ onOpenAddModal
                 )}
 
                 {/* Actions */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto', paddingTop: '0.5rem', borderTop: '1px solid var(--border-subtle)' }}>
-                  <button
-                    type="button"
-                    className="btn btn-secondary btn-sm"
-                    onClick={() => refillMedication(med.id, med.supply.refillQuantity || 30)}
-                  >
-                    <Icon name="refresh" size={14} />
-                    <span>Refill (+{med.supply.refillQuantity || 30})</span>
-                  </button>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto', paddingTop: '0.5rem', borderTop: '1px solid var(--border-subtle)', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => setSelectedMedForSupply(med)}
+                      title="Edit current pill count"
+                    >
+                      <Icon name="package" size={14} />
+                      <span>Edit Count</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => refillMedication(med.id, med.supply.refillQuantity || 30)}
+                      title="Add 30 to supply"
+                    >
+                      <Icon name="refresh" size={14} />
+                      <span>+30 Refill</span>
+                    </button>
+                  </div>
 
                   <button
                     type="button"
@@ -239,6 +266,14 @@ export const MedicationsView: React.FC<MedicationsViewProps> = ({ onOpenAddModal
           })}
         </div>
       )}
+
+      {/* Adjust Supply Modal */}
+      <AdjustSupplyModal
+        medication={selectedMedForSupply}
+        isOpen={selectedMedForSupply !== null}
+        onClose={() => setSelectedMedForSupply(null)}
+        onSaveSupply={updateSupply}
+      />
     </div>
   );
 };

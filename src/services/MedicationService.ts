@@ -158,11 +158,14 @@ export class MedicationService {
   /**
    * Update supply level directly
    */
-  async updateSupply(medicationId: string, currentSupply: number): Promise<Medication | null> {
+  async updateSupply(medicationId: string, currentSupply: number, lowThreshold?: number): Promise<Medication | null> {
     const med = await this.getMedicationById(medicationId);
     if (!med) return null;
 
     med.supply.currentSupply = Math.max(0, currentSupply);
+    if (lowThreshold !== undefined) {
+      med.supply.lowSupplyThreshold = Math.max(1, lowThreshold);
+    }
     med.updatedAt = new Date().toISOString();
     await this.medStorage.save(med);
     return med;

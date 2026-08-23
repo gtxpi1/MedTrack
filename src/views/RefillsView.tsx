@@ -1,12 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useMedications } from '../hooks/useMedications';
+import { Medication } from '../types/medication';
 import { calculateDaysRemaining, isLowSupply } from '../utils/supplyUtils';
 import { ProgressBar } from '../components/common/ProgressBar';
 import { Badge } from '../components/common/Badge';
 import { Icon } from '../components/common/Icon';
+import { AdjustSupplyModal } from '../components/medications/AdjustSupplyModal';
 
 export const RefillsView: React.FC = () => {
   const { medications, refillMedication, updateSupply, isLoading } = useMedications();
+  const [selectedMedForSupply, setSelectedMedForSupply] = useState<Medication | null>(null);
 
   if (isLoading) {
     return (
@@ -84,10 +87,10 @@ export const RefillsView: React.FC = () => {
                 </div>
 
                 {/* Supply Level Meter */}
-                <div>
+                <div style={{ cursor: 'pointer' }} onClick={() => setSelectedMedForSupply(med)} title="Click to edit supply count">
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>
-                    <span className="font-semibold">
-                      Current Supply: {med.supply.currentSupply} {med.supply.supplyUnit}
+                    <span className="font-semibold" style={{ color: 'var(--primary-700)' }}>
+                      Current Supply: {med.supply.currentSupply} {med.supply.supplyUnit} ✏️
                     </span>
                     <span className="text-muted">
                       Low-stock threshold: {med.supply.lowSupplyThreshold}
@@ -114,17 +117,10 @@ export const RefillsView: React.FC = () => {
                   <button
                     type="button"
                     className="btn btn-secondary btn-sm"
-                    onClick={() => {
-                      const input = prompt(`Update current supply count for ${med.name}:`, String(med.supply.currentSupply));
-                      if (input !== null) {
-                        const parsed = parseInt(input, 10);
-                        if (!isNaN(parsed) && parsed >= 0) {
-                          updateSupply(med.id, parsed);
-                        }
-                      }
-                    }}
+                    onClick={() => setSelectedMedForSupply(med)}
                   >
-                    Adjust Count
+                    <Icon name="package" size={14} />
+                    <span>Edit / Adjust Count</span>
                   </button>
 
                   <button
@@ -141,6 +137,14 @@ export const RefillsView: React.FC = () => {
           })}
         </div>
       </div>
+
+      {/* Adjust Supply Modal */}
+      <AdjustSupplyModal
+        medication={selectedMedForSupply}
+        isOpen={selectedMedForSupply !== null}
+        onClose={() => setSelectedMedForSupply(null)}
+        onSaveSupply={updateSupply}
+      />
     </div>
   );
 };
