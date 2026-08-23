@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Medication, MedicationForm, ScheduleFrequency } from '../../types/medication';
+import { MedicationDatabaseService, DrugSuggestion } from '../../services/MedicationDatabaseService';
 import { Icon } from '../common/Icon';
 
 interface AddMedicationModalProps {
@@ -46,7 +47,69 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
+  // Autocomplete Suggestions
+  const [suggestions, setSuggestions] = useState<DrugSuggestion[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [availableStrengths, setAvailableStrengths] = useState<string[]>([]);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
+
+  // Live autocomplete search when name changes
+  useEffect(() => {
+    if (!name || name.trim().length < 1) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    const localResults = MedicationDatabaseService.searchMedications(name);
+    setSuggestions(localResults);
+    setShowSuggestions(localResults.length > 0);
+
+    // Optional asynchronous RxNorm query if local has fewer than 2 results
+    if (localResults.length === 0 && name.length >= 3) {
+      const timer = setTimeout(async () => {
+        const liveResults = await MedicationDatabaseService.queryLiveRxNorm(name);
+        if (liveResults.length > 0) {
+          setSuggestions(liveResults);
+          setShowSuggestions(true);
+        }
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [name]);
+
+  // Close suggestions when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (suggestionsRef.current && !suggestionsRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   if (!isOpen) return null;
+
+  const selectSuggestion = (s: DrugSuggestion) => {
+    setName(s.name);
+    if (s.genericName) setGenericName(s.genericName);
+    setForm(s.form);
+    setDoseUnit(s.defaultDoseUnit);
+    
+    if (s.commonStrengths && s.commonStrengths.length > 0) {
+      setAvailableStrengths(s.commonStrengths);
+      setStrength(s.commonStrengths[0]);
+    } else {
+      setAvailableStrengths([]);
+    }
+
+    if (s.form === 'topical') {
+      setFrequency('twice-daily');
+    }
+
+    setShowSuggestions(false);
+  };
 
   const resetForm = () => {
     setName('');
@@ -66,6 +129,9 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
     setNotes('');
     setColor('#0d9488');
     setErrorMsg('');
+    setSuggestions([]);
+    setShowSuggestions(false);
+    setAvailableStrengths([]);
   };
 
   const handleClose = () => {
@@ -80,7 +146,7 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
       return;
     }
     if (!strength.trim()) {
-      setErrorMsg('Strength (e.g. 500 mg) is required');
+      setErrorMsg('Strength (e.g. 500 mg or 0.1%) is required');
       return;
     }
 
@@ -162,17 +228,76 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
               </div>
             )}
 
-            <div className="form-group">
-              <label className="form-label">Medication Name *</label>
+            {/* Medication Name with Autocomplete Dropdown */}
+            <div className="form-group" style={{ position: 'relative' }} ref={suggestionsRef}>
+              <label className="form-label">
+                Medication Name * <span className="text-xs text-muted font-normal">(Start typing for suggestions)</span>
+              </label>
               <input
                 type="text"
                 className="form-input"
-                placeholder="e.g., Metformin, Lisinopril, Aspirin"
+                placeholder="e.g., Betaderm, Venlafaxine, Acetaminophen"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                onFocus={() => {
+                  if (suggestions.length > 0) setShowSuggestions(true);
+                }}
                 autoFocus
                 required
               />
+
+              {/* Suggestions Dropdown */}
+              {showSuggestions && suggestions.length > 0 && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    right: 0,
+                    backgroundColor: '#ffffff',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: 'var(--radius-md)',
+                    boxShadow: 'var(--shadow-lg)',
+                    zIndex: 1100,
+                    maxHeight: '220px',
+                    overflowY: 'auto',
+                    marginTop: '4px'
+                  }}
+                >
+                  {suggestions.map((s, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        padding: '0.625rem 0.875rem',
+                        borderBottom: '1px solid var(--border-subtle)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.2rem',
+                        transition: 'background 0.15s ease'
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--primary-50)')}
+                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#ffffff')}
+                      onClick={() => selectSuggestion(s)}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <strong style={{ fontSize: '0.9375rem', color: 'var(--slate-900)' }}>{s.name}</strong>
+                        <span className="badge badge-primary" style={{ fontSize: '0.6875rem' }}>{s.form}</span>
+                      </div>
+                      {s.genericName && s.genericName !== s.name && (
+                        <span style={{ fontSize: '0.75rem', color: 'var(--slate-500)' }}>
+                          Generic: {s.genericName}
+                        </span>
+                      )}
+                      {s.category && (
+                        <span style={{ fontSize: '0.6875rem', color: 'var(--primary-700)' }}>
+                          {s.category}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="form-row">
@@ -181,7 +306,7 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
                 <input
                   type="text"
                   className="form-input"
-                  placeholder="e.g., Metformin HCl / Glucophage"
+                  placeholder="e.g., Betamethasone Valerate / Effexor"
                   value={genericName}
                   onChange={(e) => setGenericName(e.target.value)}
                 />
@@ -192,11 +317,33 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
                 <input
                   type="text"
                   className="form-input"
-                  placeholder="e.g., 500 mg, 10 mg, 90 mcg"
+                  placeholder="e.g., 0.1%, 75 mg, 500 mg"
                   value={strength}
                   onChange={(e) => setStrength(e.target.value)}
                   required
                 />
+                {/* Quick Strength Selection Pills if available */}
+                {availableStrengths.length > 0 && (
+                  <div style={{ display: 'flex', gap: '0.375rem', flexWrap: 'wrap', marginTop: '0.375rem' }}>
+                    {availableStrengths.map((str) => (
+                      <button
+                        key={str}
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        style={{
+                          fontSize: '0.75rem',
+                          padding: '0.2rem 0.5rem',
+                          minHeight: '26px',
+                          backgroundColor: strength === str ? 'var(--primary-100)' : undefined,
+                          borderColor: strength === str ? 'var(--primary-500)' : undefined
+                        }}
+                        onClick={() => setStrength(str)}
+                      >
+                        {str}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -214,16 +361,17 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
                     else if (f === 'inhaler') setDoseUnit('puff');
                     else if (f === 'liquid') setDoseUnit('ml');
                     else if (f === 'drops') setDoseUnit('drop');
+                    else if (f === 'topical') setDoseUnit('application');
                     else setDoseUnit('dose');
                   }}
                 >
                   <option value="tablet">Tablet</option>
                   <option value="capsule">Capsule</option>
-                  <option value="liquid">Liquid</option>
-                  <option value="inhaler">Inhaler</option>
+                  <option value="topical">Topical / Cream / Ointment</option>
+                  <option value="liquid">Liquid / Oral Solution</option>
+                  <option value="inhaler">Inhaler / Spray</option>
                   <option value="injection">Injection</option>
                   <option value="drops">Drops</option>
-                  <option value="topical">Topical / Cream</option>
                   <option value="other">Other</option>
                 </select>
               </div>
@@ -243,7 +391,7 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
                   <input
                     type="text"
                     className="form-input"
-                    placeholder="unit (e.g. tablet)"
+                    placeholder="unit (e.g. tablet, capsule, application)"
                     value={doseUnit}
                     onChange={(e) => setDoseUnit(e.target.value)}
                   />
@@ -259,7 +407,7 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
                 onChange={(e) => setFrequency(e.target.value as ScheduleFrequency)}
               >
                 <option value="once-daily">Once Daily</option>
-                <option value="twice-daily">Twice Daily</option>
+                <option value="twice-daily">Twice Daily (Morning & Evening)</option>
                 <option value="three-times-daily">Three Times Daily</option>
                 <option value="four-times-daily">Four Times Daily</option>
                 <option value="as-needed">As Needed (PRN / When required)</option>
@@ -342,7 +490,7 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
 
             {frequency === 'as-needed' && (
               <div style={{ backgroundColor: 'var(--info-bg)', color: 'var(--info-text)', padding: '0.75rem', borderRadius: 'var(--radius-md)', marginBottom: '1rem', fontSize: '0.8125rem' }}>
-                ℹ️ <strong>As-Needed (PRN):</strong> This medication has no fixed daily time. It will appear on your Today dashboard in the "As-Needed" section so you can log a dose whenever taken.
+                ℹ️ <strong>As-Needed (PRN):</strong> This medication has no fixed daily schedule. It will appear on your Today dashboard in the "As-Needed" section so you can log a dose whenever taken.
               </div>
             )}
 
@@ -400,7 +548,7 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
               <input
                 type="text"
                 className="form-input"
-                placeholder="e.g. Take with food or full glass of water"
+                placeholder="e.g. Apply thin layer to affected area / Take with food"
                 value={instructions}
                 onChange={(e) => setInstructions(e.target.value)}
               />
@@ -411,7 +559,7 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
               <textarea
                 className="form-textarea"
                 rows={2}
-                placeholder="e.g. Prescribed for 3 months review"
+                placeholder="e.g. Prescribed by Dr. Smith for seasonal review"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
               />

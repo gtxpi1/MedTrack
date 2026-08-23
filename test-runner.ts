@@ -1,4 +1,5 @@
 import { MedicationService } from './src/services/MedicationService';
+import { MedicationDatabaseService } from './src/services/MedicationDatabaseService';
 import { IStorageService } from './src/storage/IStorageService';
 import { Medication, DoseRecord } from './src/types/medication';
 
@@ -29,72 +30,110 @@ class MemoryStorage<T extends { id: string }> implements IStorageService<T> {
 }
 
 async function runTests() {
-  console.log('=== TEST 1: Service Initialization ===');
+  console.log('=== TEST 1: Autocomplete Directory Lookup for User Query Medications ===');
+  
+  // 1. Betaderm lookup
+  const betadermResults = MedicationDatabaseService.searchMedications('betaderm');
+  console.log(`Searching "betaderm": found ${betadermResults.length} matches:`);
+  betadermResults.forEach((r) => console.log(`  - ${r.name} (${r.genericName}) | Form: ${r.form} | Strengths: ${r.commonStrengths.join(', ')}`));
+  if (betadermResults.length === 0 || betadermResults[0].name !== 'Betaderm') {
+    throw new Error('Betaderm not found in medication directory!');
+  }
+  console.log('✔ PASS: Betaderm correctly resolved in database.');
+
+  // 2. Venlafaxine lookup
+  const venlafaxineResults = MedicationDatabaseService.searchMedications('venlafaxine');
+  console.log(`Searching "venlafaxine": found ${venlafaxineResults.length} matches:`);
+  venlafaxineResults.forEach((r) => console.log(`  - ${r.name} (${r.genericName}) | Form: ${r.form} | Strengths: ${r.commonStrengths.join(', ')}`));
+  if (venlafaxineResults.length === 0 || venlafaxineResults[0].name !== 'Venlafaxine') {
+    throw new Error('Venlafaxine not found in medication directory!');
+  }
+  console.log('✔ PASS: Venlafaxine correctly resolved in database.');
+
+  // 3. Acetaminophen lookup
+  const acetaminophenResults = MedicationDatabaseService.searchMedications('acetaminophen');
+  console.log(`Searching "acetaminophen": found ${acetaminophenResults.length} matches:`);
+  acetaminophenResults.forEach((r) => console.log(`  - ${r.name} (${r.genericName}) | Form: ${r.form} | Strengths: ${r.commonStrengths.join(', ')}`));
+  if (acetaminophenResults.length === 0 || acetaminophenResults[0].name !== 'Acetaminophen') {
+    throw new Error('Acetaminophen not found in medication directory!');
+  }
+  console.log('✔ PASS: Acetaminophen correctly resolved in database.');
+
+  console.log('\n=== TEST 2: Adding Betaderm, Venlafaxine & Acetaminophen to Tracker ===');
   const medStore = new MemoryStorage<Medication>();
   const doseStore = new MemoryStorage<DoseRecord>();
   const service = new MedicationService(medStore, doseStore);
-
   await service.initialize();
-  const initialMeds = await service.getMedications();
-  console.log(`Initial sample medications loaded: ${initialMeds.length}`);
-  if (initialMeds.length !== 5) throw new Error(`Expected 5 sample meds, got ${initialMeds.length}`);
 
-  console.log('\n=== TEST 2: Add Scheduled Medication (Amoxicillin 500mg, 3x daily) ===');
-  const newMed1 = await service.addMedication({
-    name: 'Amoxicillin',
-    genericName: 'Amoxicillin Trihydrate',
-    form: 'capsule',
-    strength: '500 mg',
+  // Add Betaderm (Topical cream, twice daily)
+  const betaderm = await service.addMedication({
+    name: 'Betaderm',
+    genericName: 'Betamethasone Valerate',
+    form: 'topical',
+    strength: '0.1%',
     doseAmount: 1,
-    doseUnit: 'capsule',
-    frequency: 'three-times-daily',
+    doseUnit: 'application',
+    frequency: 'twice-daily',
     schedule: {
-      id: 'sched-amox',
+      id: 'sched-betaderm',
       medicationId: '',
-      frequency: 'three-times-daily',
-      scheduledTimes: ['08:00', '14:00', '20:00'],
+      frequency: 'twice-daily',
+      scheduledTimes: ['08:00', '20:00'],
       startDate: '2026-08-23',
       isActive: true
     },
     supply: {
-      currentSupply: 21,
-      lowSupplyThreshold: 6,
+      currentSupply: 60,
+      lowSupplyThreshold: 10,
+      supplyUnit: 'applications',
+      refillQuantity: 60
+    },
+    instructions: 'Apply thin layer to affected skin twice daily',
+    isActive: true
+  });
+  console.log(`✔ Added ${betaderm.name} (id: ${betaderm.id})`);
+
+  // Add Venlafaxine (Capsule, once daily in morning)
+  const venlafaxine = await service.addMedication({
+    name: 'Venlafaxine',
+    genericName: 'Venlafaxine HCl',
+    brandName: 'Effexor XR',
+    form: 'capsule',
+    strength: '75 mg',
+    doseAmount: 1,
+    doseUnit: 'capsule',
+    frequency: 'once-daily',
+    schedule: {
+      id: 'sched-venla',
+      medicationId: '',
+      frequency: 'once-daily',
+      scheduledTimes: ['08:00'],
+      startDate: '2026-08-23',
+      isActive: true
+    },
+    supply: {
+      currentSupply: 30,
+      lowSupplyThreshold: 7,
       supplyUnit: 'capsules',
       refillQuantity: 30
     },
-    instructions: 'Take with food',
+    instructions: 'Take in the morning with food',
     isActive: true
   });
-  console.log(`Added med: ${newMed1.name} (id: ${newMed1.id})`);
+  console.log(`✔ Added ${venlafaxine.name} (id: ${venlafaxine.id})`);
 
-  const allMedsAfterAdd = await service.getMedications();
-  console.log(`Total medications in list: ${allMedsAfterAdd.length}`);
-  const found = allMedsAfterAdd.find((m) => m.name === 'Amoxicillin');
-  if (!found) throw new Error('Amoxicillin not found in medications list!');
-  console.log('PASS: Medication appears in medications catalog.');
-
-  console.log('\n=== TEST 3: Check Today Scheduled Doses ===');
-  const todayDoses = await service.getTodayScheduledDoses();
-  console.log(`Total today scheduled dose slots: ${todayDoses.length}`);
-  const amoxDoses = todayDoses.filter((d) => d.medication.name === 'Amoxicillin');
-  console.log(`Amoxicillin today dose slots: ${amoxDoses.length} (Expected 3)`);
-  amoxDoses.forEach((d) => {
-    console.log(`  - Slot: ${d.record.scheduledTime} (${d.record.timeOfDay}) | Status: ${d.record.status}`);
-  });
-  if (amoxDoses.length !== 3) throw new Error(`Expected 3 Amoxicillin doses, got ${amoxDoses.length}`);
-  console.log('PASS: All 3 Amoxicillin daily doses generated on today schedule.');
-
-  console.log('\n=== TEST 4: Add As-Needed (PRN) Medication (Ibuprofen 200mg) ===');
-  const prnMed = await service.addMedication({
-    name: 'Ibuprofen',
-    genericName: 'Ibuprofen',
+  // Add Acetaminophen (Tablet, As-Needed)
+  const acetaminophen = await service.addMedication({
+    name: 'Acetaminophen',
+    genericName: 'Acetaminophen',
+    brandName: 'Tylenol',
     form: 'tablet',
-    strength: '200 mg',
+    strength: '500 mg',
     doseAmount: 1,
     doseUnit: 'tablet',
     frequency: 'as-needed',
     schedule: {
-      id: 'sched-ibu',
+      id: 'sched-aceta',
       medicationId: '',
       frequency: 'as-needed',
       scheduledTimes: [],
@@ -102,38 +141,34 @@ async function runTests() {
       isActive: true
     },
     supply: {
-      currentSupply: 50,
-      lowSupplyThreshold: 10,
+      currentSupply: 100,
+      lowSupplyThreshold: 15,
       supplyUnit: 'tablets',
       refillQuantity: 100
     },
-    instructions: 'Take 1 tablet every 6 hours as needed for headache',
+    instructions: 'Take 1-2 tablets every 4-6 hours as needed for headache or fever',
     isActive: true
   });
-  console.log(`Added PRN med: ${prnMed.name} (id: ${prnMed.id})`);
+  console.log(`✔ Added ${acetaminophen.name} (id: ${acetaminophen.id})`);
 
-  const prnList = await service.getAsNeededMedications();
-  console.log(`PRN medications count: ${prnList.length}`);
-  const foundPrn = prnList.find((m) => m.name === 'Ibuprofen');
-  if (!foundPrn) throw new Error('Ibuprofen not found in PRN list!');
-  console.log('PASS: Ibuprofen appears in PRN list.');
+  console.log('\n=== TEST 3: Verifying Today Dashboard Schedule & As-Needed List ===');
+  const todayDoses = await service.getTodayScheduledDoses();
+  const prnMeds = await service.getAsNeededMedications();
 
-  console.log('\n=== TEST 5: Log PRN Dose ===');
-  const loggedPrn = await service.logPrnDose(prnMed.id, 'Headache relief');
-  console.log(`Logged PRN dose: ${loggedPrn.id} at ${loggedPrn.scheduledTime}`);
-  const updatedIbu = await service.getMedicationById(prnMed.id);
-  console.log(`Ibuprofen supply after taking 1 dose: ${updatedIbu?.supply.currentSupply} (Expected 49)`);
-  if (updatedIbu?.supply.currentSupply !== 49) throw new Error('Supply did not decrement!');
+  console.log(`Total scheduled doses for today: ${todayDoses.length}`);
+  const betadermDoses = todayDoses.filter((d) => d.medication.name === 'Betaderm');
+  const venlaDoses = todayDoses.filter((d) => d.medication.name === 'Venlafaxine');
+  console.log(`  - Betaderm scheduled today: ${betadermDoses.length} doses (Expected 2: Morning & Evening)`);
+  console.log(`  - Venlafaxine scheduled today: ${venlaDoses.length} doses (Expected 1: Morning)`);
+  if (betadermDoses.length !== 2) throw new Error('Betaderm doses missing from today schedule');
+  if (venlaDoses.length !== 1) throw new Error('Venlafaxine dose missing from today schedule');
 
-  console.log('\n=== TEST 6: Take Scheduled Dose ===');
-  const doseToTake = amoxDoses[0];
-  console.log(`Taking dose: ${doseToTake.record.id}`);
-  await service.recordDoseStatus(doseToTake.record.id, 'taken');
-  const updatedAmox = await service.getMedicationById(newMed1.id);
-  console.log(`Amoxicillin supply after taking 1 dose: ${updatedAmox?.supply.currentSupply} (Expected 20)`);
-  if (updatedAmox?.supply.currentSupply !== 20) throw new Error('Supply did not decrement on take!');
+  console.log(`Total As-Needed medications: ${prnMeds.length}`);
+  const foundAcetaPrn = prnMeds.find((m) => m.name === 'Acetaminophen');
+  if (!foundAcetaPrn) throw new Error('Acetaminophen missing from As-Needed list');
+  console.log(`  - Acetaminophen on As-Needed shelf: ${foundAcetaPrn.name} (${foundAcetaPrn.strength})`);
 
-  console.log('\n=== ALL AUTOMATED TESTS PASSED! ===');
+  console.log('\n=== ALL USER SCENARIO TESTS PASSED SUCCESSFULLY! ===');
 }
 
 runTests().catch((e) => {

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useMedications } from '../hooks/useMedications';
 import { formatTime12h } from '../utils/dateUtils';
 import { calculateDaysRemaining, isLowSupply } from '../utils/supplyUtils';
+import { MedicationDatabaseService } from '../services/MedicationDatabaseService';
 import { Badge } from '../components/common/Badge';
 import { Icon } from '../components/common/Icon';
 
@@ -23,7 +24,7 @@ export const MedicationsView: React.FC<MedicationsViewProps> = ({ onOpenAddModal
   }
 
   const filteredMeds = medications.filter((m) => {
-    const q = searchQuery.toLowerCase();
+    const q = searchQuery.toLowerCase().trim();
     return (
       m.name.toLowerCase().includes(q) ||
       (m.genericName && m.genericName.toLowerCase().includes(q)) ||
@@ -31,6 +32,10 @@ export const MedicationsView: React.FC<MedicationsViewProps> = ({ onOpenAddModal
       m.strength.toLowerCase().includes(q)
     );
   });
+
+  const directorySuggestions = searchQuery.trim().length > 0 && filteredMeds.length === 0
+    ? MedicationDatabaseService.searchMedications(searchQuery)
+    : [];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -44,10 +49,19 @@ export const MedicationsView: React.FC<MedicationsViewProps> = ({ onOpenAddModal
             type="text"
             className="form-input"
             style={{ paddingLeft: '2.5rem' }}
-            placeholder="Search medications..."
+            placeholder="Search saved medications..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
+          {searchQuery && (
+            <button
+              type="button"
+              style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--slate-400)' }}
+              onClick={() => setSearchQuery('')}
+            >
+              <Icon name="x" size={16} />
+            </button>
+          )}
         </div>
 
         <button type="button" className="btn btn-primary" onClick={onOpenAddModal}>
@@ -58,14 +72,69 @@ export const MedicationsView: React.FC<MedicationsViewProps> = ({ onOpenAddModal
 
       {/* Medication List */}
       {filteredMeds.length === 0 ? (
-        <div className="empty-state">
+        <div className="empty-state" style={{ padding: '2.5rem 1.5rem' }}>
           <div className="empty-icon">
-            <Icon name="pill" size={28} />
+            <Icon name="search" size={28} />
           </div>
-          <h4>No medications found</h4>
-          <p className="text-muted text-sm">
-            {searchQuery ? 'Try a different search term.' : 'Add your first medication to begin tracking.'}
+          <h4>
+            {searchQuery
+              ? `"${searchQuery}" is not in your saved cabinet yet`
+              : 'No medications in your cabinet'}
+          </h4>
+          <p className="text-muted text-sm" style={{ maxWidth: '450px' }}>
+            {searchQuery
+              ? `You can add "${searchQuery}" to start tracking schedules, doses, and refill inventory.`
+              : 'Click "Add Medication" to create your first prescription or OTC tracker.'}
           </p>
+
+          <button
+            type="button"
+            className="btn btn-primary"
+            style={{ marginTop: '0.75rem' }}
+            onClick={onOpenAddModal}
+          >
+            <Icon name="plus" size={18} />
+            <span>{searchQuery ? `Add "${searchQuery}" to Cabinet` : 'Add Medication'}</span>
+          </button>
+
+          {/* Directory hints */}
+          {directorySuggestions.length > 0 && (
+            <div style={{ marginTop: '1.5rem', textAlign: 'left', width: '100%', maxWidth: '450px' }}>
+              <span className="text-xs text-muted font-semibold" style={{ textTransform: 'uppercase' }}>
+                Medication Directory Matches:
+              </span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
+                {directorySuggestions.map((s, idx) => (
+                  <div
+                    key={idx}
+                    style={{
+                      padding: '0.625rem 0.875rem',
+                      border: '1px solid var(--border-color)',
+                      borderRadius: 'var(--radius-md)',
+                      backgroundColor: '#ffffff',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
+                    }}
+                  >
+                    <div>
+                      <strong>{s.name}</strong>
+                      {s.genericName && s.genericName !== s.name && (
+                        <div className="text-xs text-muted">{s.genericName}</div>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      onClick={onOpenAddModal}
+                    >
+                      + Add
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <div className="grid-cards">
