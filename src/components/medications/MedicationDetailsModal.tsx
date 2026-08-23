@@ -10,13 +10,15 @@ interface MedicationDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
   onOpenSupplyEditor?: (med: Medication) => void;
+  onEditMedication?: (med: Medication) => void;
 }
 
 export const MedicationDetailsModal: React.FC<MedicationDetailsModalProps> = ({
   medication,
   isOpen,
   onClose,
-  onOpenSupplyEditor
+  onOpenSupplyEditor,
+  onEditMedication
 }) => {
   if (!isOpen || !medication) return null;
 
@@ -173,20 +175,36 @@ export const MedicationDetailsModal: React.FC<MedicationDetailsModalProps> = ({
           </div>
         </div>
 
-        <div className="modal-footer" style={{ justifyContent: 'space-between' }}>
-          {onOpenSupplyEditor && (
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              onClick={() => {
-                onClose();
-                onOpenSupplyEditor(medication);
-              }}
-            >
-              <Icon name="package" size={14} />
-              <span>Edit Supply Count ({medication.supply.currentSupply})</span>
-            </button>
-          )}
+        <div className="modal-footer" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            {onEditMedication && (
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => {
+                  onClose();
+                  onEditMedication(medication);
+                }}
+              >
+                <Icon name="settings" size={14} />
+                <span>Edit Medication</span>
+              </button>
+            )}
+
+            {onOpenSupplyEditor && (
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => {
+                  onClose();
+                  onOpenSupplyEditor(medication);
+                }}
+              >
+                <Icon name="package" size={14} />
+                <span>Edit Supply ({medication.supply.currentSupply})</span>
+              </button>
+            )}
+          </div>
 
           <button type="button" className="btn btn-primary" onClick={onClose}>
             Done

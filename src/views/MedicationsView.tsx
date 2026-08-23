@@ -8,6 +8,7 @@ import { InteractionService } from '../services/InteractionService';
 import { Badge } from '../components/common/Badge';
 import { Icon } from '../components/common/Icon';
 import { AdjustSupplyModal } from '../components/medications/AdjustSupplyModal';
+import { EditMedicationModal } from '../components/medications/EditMedicationModal';
 import { MedicationDetailsModal } from '../components/medications/MedicationDetailsModal';
 import { InteractionCheckerModal } from '../components/medications/InteractionCheckerModal';
 
@@ -16,10 +17,11 @@ interface MedicationsViewProps {
 }
 
 export const MedicationsView: React.FC<MedicationsViewProps> = ({ onOpenAddModal }) => {
-  const { medications, deleteMedication, updateSupply, isLoading } = useMedications();
+  const { medications, deleteMedication, updateMedication, updateSupply, isLoading } = useMedications();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMedForSupply, setSelectedMedForSupply] = useState<Medication | null>(null);
   const [selectedMedForDetails, setSelectedMedForDetails] = useState<Medication | null>(null);
+  const [selectedMedForEdit, setSelectedMedForEdit] = useState<Medication | null>(null);
   const [isInteractionModalOpen, setIsInteractionModalOpen] = useState(false);
 
   if (isLoading) {
@@ -264,7 +266,17 @@ export const MedicationsView: React.FC<MedicationsViewProps> = ({ onOpenAddModal
                       title="View what to avoid eating/drinking and clinical guide"
                     >
                       <Icon name="pill" size={14} />
-                      <span>Info & Warnings</span>
+                      <span>Info</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => setSelectedMedForEdit(med)}
+                      title="Edit medication name, strength, and schedule"
+                    >
+                      <Icon name="settings" size={14} />
+                      <span>Edit</span>
                     </button>
 
                     <button
@@ -274,7 +286,7 @@ export const MedicationsView: React.FC<MedicationsViewProps> = ({ onOpenAddModal
                       title="Edit current pill count"
                     >
                       <Icon name="package" size={14} />
-                      <span>Edit Count</span>
+                      <span>Count</span>
                     </button>
                   </div>
 
@@ -297,6 +309,14 @@ export const MedicationsView: React.FC<MedicationsViewProps> = ({ onOpenAddModal
         </div>
       )}
 
+      {/* Edit Medication Modal */}
+      <EditMedicationModal
+        medication={selectedMedForEdit}
+        isOpen={selectedMedForEdit !== null}
+        onClose={() => setSelectedMedForEdit(null)}
+        onUpdate={updateMedication}
+      />
+
       {/* Adjust Supply Modal */}
       <AdjustSupplyModal
         medication={selectedMedForSupply}
@@ -311,6 +331,7 @@ export const MedicationsView: React.FC<MedicationsViewProps> = ({ onOpenAddModal
         isOpen={selectedMedForDetails !== null}
         onClose={() => setSelectedMedForDetails(null)}
         onOpenSupplyEditor={(med) => setSelectedMedForSupply(med)}
+        onEditMedication={(med) => setSelectedMedForEdit(med)}
       />
 
       {/* Safety & Interactions Modal */}
