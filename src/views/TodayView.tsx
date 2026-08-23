@@ -318,16 +318,32 @@ export const TodayView: React.FC<TodayViewProps> = ({ onNavigate }) => {
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div
-                      style={{ cursor: 'pointer' }}
+                      style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.75rem' }}
                       onClick={() => setSelectedMedForDetails(med)}
                       title="Click to view info and food warnings"
                     >
-                      <h4 style={{ fontSize: '1.0625rem', fontWeight: 700, color: 'var(--primary-900)' }}>
-                        {med.name} ℹ️
-                      </h4>
-                      <span className="text-xs text-muted">
-                        {med.strength} · {med.doseAmount} {med.doseUnit}{med.doseAmount > 1 ? 's' : ''}
-                      </span>
+                      {med.imageUrl && (
+                        <img
+                          src={med.imageUrl}
+                          alt={med.name}
+                          style={{
+                            width: '42px',
+                            height: '42px',
+                            objectFit: 'cover',
+                            borderRadius: 'var(--radius-md)',
+                            border: `2px solid ${med.color || 'var(--primary-500)'}`,
+                            boxShadow: 'var(--shadow-sm)'
+                          }}
+                        />
+                      )}
+                      <div>
+                        <h4 style={{ fontSize: '1.0625rem', fontWeight: 700, color: 'var(--primary-900)' }}>
+                          {med.name} ℹ️
+                        </h4>
+                        <span className="text-xs text-muted">
+                          {med.strength} · {med.doseAmount} {med.doseUnit}{med.doseAmount > 1 ? 's' : ''}
+                        </span>
+                      </div>
                     </div>
 
                     <span className="badge badge-primary">As-Needed</span>

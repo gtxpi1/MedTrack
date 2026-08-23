@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Medication, MedicationForm, ScheduleFrequency } from '../../types/medication';
 import { MedicationDatabaseService, DrugSuggestion } from '../../services/MedicationDatabaseService';
+import { processMedicationPhoto } from '../../utils/imageUtils';
 import { Icon } from '../common/Icon';
 
 interface EditMedicationModalProps {
@@ -46,6 +47,7 @@ export const EditMedicationModal: React.FC<EditMedicationModalProps> = ({
   const [instructions, setInstructions] = useState('');
   const [notes, setNotes] = useState('');
   const [color, setColor] = useState('#0d9488');
+  const [imageUrl, setImageUrl] = useState<string | undefined>(undefined);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -54,6 +56,7 @@ export const EditMedicationModal: React.FC<EditMedicationModalProps> = ({
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [availableStrengths, setAvailableStrengths] = useState<string[]>([]);
   const suggestionsRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (medication) {
@@ -76,6 +79,7 @@ export const EditMedicationModal: React.FC<EditMedicationModalProps> = ({
       setInstructions(medication.instructions || '');
       setNotes(medication.notes || '');
       setColor(medication.color || '#0d9488');
+      setImageUrl(medication.imageUrl);
       setErrorMsg('');
 
       // Check available strengths for the current name
@@ -129,6 +133,19 @@ export const EditMedicationModal: React.FC<EditMedicationModalProps> = ({
     }
 
     setShowSuggestions(false);
+  };
+
+  const handlePhotoCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const processed = await processMedicationPhoto(file);
+      setImageUrl(processed);
+    } catch (err) {
+      console.error('Failed to process image:', err);
+      setErrorMsg('Failed to process image. Please try another photo.');
+    }
   };
 
   const adjustDoseAmount = (delta: number) => {
@@ -190,6 +207,7 @@ export const EditMedicationModal: React.FC<EditMedicationModalProps> = ({
         instructions: instructions.trim() || undefined,
         notes: notes.trim() || undefined,
         color,
+        imageUrl,
         updatedAt: new Date().toISOString()
       };
 
@@ -501,6 +519,63 @@ export const EditMedicationModal: React.FC<EditMedicationModalProps> = ({
                   onFocus={(e) => e.target.select()}
                 />
               </div>
+            </div>
+
+            {/* PHOTO CAPTURE / UPLOAD SECTION */}
+            <div className="form-group" style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '1rem' }}>
+              <label className="form-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span>📷 Medication Photo / Bottle Label</span>
+                <span className="text-xs text-muted font-normal">(Optional - helps identify pill or label)</span>
+              </label>
+
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept="image/*"
+                capture="environment"
+                style={{ display: 'none' }}
+                onChange={handlePhotoCapture}
+              />
+
+              {imageUrl ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', backgroundColor: 'var(--slate-50)', padding: '0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                  <img
+                    src={imageUrl}
+                    alt="Medication preview"
+                    style={{ width: '64px', height: '64px', objectFit: 'cover', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}
+                  />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
+                    <span className="text-xs font-semibold text-success">✓ Photo Attached</span>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        Retake / Change
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm"
+                        style={{ color: 'var(--danger-text)' }}
+                        onClick={() => setImageUrl(undefined)}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  style={{ width: '100%', gap: '0.5rem', justifyContent: 'center', padding: '0.75rem' }}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Icon name="camera" size={18} />
+                  <span>Take Photo or Upload Pill/Bottle Image</span>
+                </button>
+              )}
             </div>
 
             {/* Pill Color Tag */}

@@ -96,6 +96,7 @@ export interface Medication {
   // UI customization
   color?: string;                 // Hex color or palette key for pill identification
   icon?: string;                  // Icon identifier
+  imageUrl?: string;              // Base64 photo of actual pill/bottle for visual identification
   isActive: boolean;
   createdAt: string;              // ISO timestamp
   updatedAt: string;              // ISO timestamp

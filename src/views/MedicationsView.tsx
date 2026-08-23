@@ -185,16 +185,32 @@ export const MedicationsView: React.FC<MedicationsViewProps> = ({ onOpenAddModal
                 {/* Header */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div
-                    style={{ cursor: 'pointer' }}
+                    style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.75rem' }}
                     onClick={() => setSelectedMedForDetails(med)}
                     title="Click to view full medication details and food warnings"
                   >
-                    <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--primary-900)' }}>
-                      {med.name} ℹ️
-                    </h3>
-                    {med.genericName && (
-                      <span className="text-xs text-muted">{med.genericName}</span>
+                    {med.imageUrl && (
+                      <img
+                        src={med.imageUrl}
+                        alt={med.name}
+                        style={{
+                          width: '44px',
+                          height: '44px',
+                          objectFit: 'cover',
+                          borderRadius: 'var(--radius-md)',
+                          border: `2px solid ${med.color || 'var(--primary-500)'}`,
+                          boxShadow: 'var(--shadow-sm)'
+                        }}
+                      />
                     )}
+                    <div>
+                      <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--primary-900)' }}>
+                        {med.name} ℹ️
+                      </h3>
+                      {med.genericName && (
+                        <span className="text-xs text-muted">{med.genericName}</span>
+                      )}
+                    </div>
                   </div>
 
                   <Badge variant={low ? 'warning' : 'primary'}>

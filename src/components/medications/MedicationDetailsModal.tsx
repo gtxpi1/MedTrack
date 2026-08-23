@@ -30,20 +30,35 @@ export const MedicationDetailsModal: React.FC<MedicationDetailsModalProps> = ({
         {/* Header */}
         <div className="modal-header" style={{ borderBottom: `3px solid ${medication.color || 'var(--primary-600)'}` }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <div
-              style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: 'var(--radius-md)',
-                backgroundColor: 'var(--primary-100)',
-                color: 'var(--primary-700)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-            >
-              <Icon name="pill" size={24} />
-            </div>
+            {medication.imageUrl ? (
+              <img
+                src={medication.imageUrl}
+                alt={medication.name}
+                style={{
+                  width: '48px',
+                  height: '48px',
+                  objectFit: 'cover',
+                  borderRadius: 'var(--radius-md)',
+                  border: `2px solid ${medication.color || 'var(--primary-500)'}`,
+                  boxShadow: 'var(--shadow-sm)'
+                }}
+              />
+            ) : (
+              <div
+                style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: 'var(--radius-md)',
+                  backgroundColor: 'var(--primary-100)',
+                  color: 'var(--primary-700)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <Icon name="pill" size={24} />
+              </div>
+            )}
             <div>
               <h2 style={{ fontSize: '1.25rem', margin: 0 }}>{medication.name}</h2>
               <span className="text-xs text-muted">
@@ -58,6 +73,26 @@ export const MedicationDetailsModal: React.FC<MedicationDetailsModalProps> = ({
         </div>
 
         <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', maxHeight: '70vh', overflowY: 'auto' }}>
+          
+          {/* Large Photo Preview if attached */}
+          {medication.imageUrl && (
+            <div style={{ textAlign: 'center', backgroundColor: 'var(--slate-50)', padding: '0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+              <img
+                src={medication.imageUrl}
+                alt={medication.name}
+                style={{
+                  maxHeight: '180px',
+                  maxWidth: '100%',
+                  objectFit: 'contain',
+                  borderRadius: 'var(--radius-md)',
+                  boxShadow: 'var(--shadow-md)'
+                }}
+              />
+              <div className="text-xs text-muted" style={{ marginTop: '0.375rem' }}>
+                📷 Visual Identification Photo (Bottle / Pill)
+              </div>
+            </div>
+          )}
           
           {/* Quick Stats Pill Header */}
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>

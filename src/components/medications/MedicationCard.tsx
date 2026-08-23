@@ -69,15 +69,30 @@ export const MedicationCard: React.FC<MedicationCardProps> = ({
       {/* Card Header: Pill icon, Names, and Status */}
       <div className="med-card-header">
         <div className="med-card-title-group" onClick={() => onSelect?.(medication.id)} style={{ cursor: onSelect ? 'pointer' : 'default' }}>
-          <div
-            className="med-pill-icon"
-            style={{
-              backgroundColor: medication.color ? `${medication.color}18` : undefined,
-              color: medication.color || 'var(--primary-700)'
-            }}
-          >
-            <Icon name={medication.form === 'inhaler' ? 'activity' : 'pill'} size={22} />
-          </div>
+          {medication.imageUrl ? (
+            <img
+              src={medication.imageUrl}
+              alt={medication.name}
+              style={{
+                width: '44px',
+                height: '44px',
+                objectFit: 'cover',
+                borderRadius: 'var(--radius-md)',
+                border: `2px solid ${medication.color || 'var(--primary-500)'}`,
+                boxShadow: 'var(--shadow-sm)'
+              }}
+            />
+          ) : (
+            <div
+              className="med-pill-icon"
+              style={{
+                backgroundColor: medication.color ? `${medication.color}18` : undefined,
+                color: medication.color || 'var(--primary-700)'
+              }}
+            >
+              <Icon name={medication.form === 'inhaler' ? 'activity' : 'pill'} size={22} />
+            </div>
+          )}
           <div>
             <h3 className="med-card-name">{medication.name}</h3>
             {medication.genericName && (

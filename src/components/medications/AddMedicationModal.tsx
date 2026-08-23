@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Medication, MedicationForm, ScheduleFrequency } from '../../types/medication';
 import { MedicationDatabaseService, DrugSuggestion } from '../../services/MedicationDatabaseService';
+import { processMedicationPhoto } from '../../utils/imageUtils';
 import { Icon } from '../common/Icon';
 
 interface AddMedicationModalProps {
@@ -44,6 +45,7 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
   const [instructions, setInstructions] = useState('');
   const [notes, setNotes] = useState('');
   const [color, setColor] = useState('#0d9488');
+  const [imageUrl, setImageUrl] = useState<string | undefined>(undefined);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -52,6 +54,7 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [availableStrengths, setAvailableStrengths] = useState<string[]>([]);
   const suggestionsRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Live autocomplete search when name changes
   useEffect(() => {
@@ -111,6 +114,19 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
     setShowSuggestions(false);
   };
 
+  const handlePhotoCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const processed = await processMedicationPhoto(file);
+      setImageUrl(processed);
+    } catch (err) {
+      console.error('Failed to process image:', err);
+      setErrorMsg('Failed to process image. Please try another photo.');
+    }
+  };
+
   const resetForm = () => {
     setName('');
     setGenericName('');
@@ -128,6 +144,7 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
     setInstructions('');
     setNotes('');
     setColor('#0d9488');
+    setImageUrl(undefined);
     setErrorMsg('');
     setSuggestions([]);
     setShowSuggestions(false);
@@ -142,7 +159,6 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
   const adjustDoseAmount = (delta: number) => {
     const current = parseFloat(doseAmount) || 0;
     const next = Math.max(0.25, current + delta);
-    // Format nicely without trailing zeros if whole
     setDoseAmount(String(Number(next.toFixed(2))));
   };
 
@@ -200,6 +216,7 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
         instructions: instructions.trim() || undefined,
         notes: notes.trim() || undefined,
         color,
+        imageUrl,
         isActive: true
       });
 
@@ -247,7 +264,7 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
               <input
                 type="text"
                 className="form-input"
-                placeholder="e.g., Quetiapine XR, Betaderm, Venlafaxine"
+                placeholder="e.g., Quetiapine XR, Betaderm, Novo-Gesic Forte"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 onFocus={() => {
@@ -317,7 +334,7 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
                 <input
                   type="text"
                   className="form-input"
-                  placeholder="e.g., Seroquel XR / Effexor"
+                  placeholder="e.g., Seroquel XR / Effexor / Acetaminophen"
                   value={genericName}
                   onChange={(e) => setGenericName(e.target.value)}
                 />
@@ -388,7 +405,7 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
                 </select>
               </div>
 
-              {/* Dose Size with + / - Stepper and Free-Text backspaceable input */}
+              {/* Dose Size with + / - Stepper */}
               <div className="form-group">
                 <label className="form-label">Dose Size (per intake)</label>
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
@@ -575,6 +592,63 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
                   placeholder="7"
                 />
               </div>
+            </div>
+
+            {/* PHOTO CAPTURE / UPLOAD SECTION */}
+            <div className="form-group" style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '1rem' }}>
+              <label className="form-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span>📷 Medication Photo / Bottle Label</span>
+                <span className="text-xs text-muted font-normal">(Optional - helps identify pill or label)</span>
+              </label>
+
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept="image/*"
+                capture="environment"
+                style={{ display: 'none' }}
+                onChange={handlePhotoCapture}
+              />
+
+              {imageUrl ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', backgroundColor: 'var(--slate-50)', padding: '0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                  <img
+                    src={imageUrl}
+                    alt="Medication preview"
+                    style={{ width: '64px', height: '64px', objectFit: 'cover', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}
+                  />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
+                    <span className="text-xs font-semibold text-success">✓ Photo Attached</span>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        Retake / Change
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm"
+                        style={{ color: 'var(--danger-text)' }}
+                        onClick={() => setImageUrl(undefined)}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  style={{ width: '100%', gap: '0.5rem', justifyContent: 'center', padding: '0.75rem' }}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Icon name="camera" size={18} />
+                  <span>Take Photo or Upload Pill/Bottle Image</span>
+                </button>
+              )}
             </div>
 
             {/* Pill Color Tag */}
