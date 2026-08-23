@@ -10,6 +10,7 @@ import { calculateDaysRemaining } from '../utils/supplyUtils';
 import { InteractionService } from '../services/InteractionService';
 import { MedicationDetailsModal } from '../components/medications/MedicationDetailsModal';
 import { InteractionCheckerModal } from '../components/medications/InteractionCheckerModal';
+import { PhotoLightboxModal } from '../components/common/PhotoLightboxModal';
 
 interface TodayViewProps {
   onNavigate: (view: AppView) => void;
@@ -33,6 +34,7 @@ export const TodayView: React.FC<TodayViewProps> = ({ onNavigate }) => {
   const [activeFilter, setActiveFilter] = useState<'all' | TimeOfDay | 'pending'>('all');
   const [prnNotice, setPrnNotice] = useState<string>('');
   const [selectedMedForDetails, setSelectedMedForDetails] = useState<Medication | null>(null);
+  const [selectedMedForPhoto, setSelectedMedForPhoto] = useState<Medication | null>(null);
   const [isInteractionModalOpen, setIsInteractionModalOpen] = useState(false);
 
   if (isLoading) {
@@ -318,25 +320,33 @@ export const TodayView: React.FC<TodayViewProps> = ({ onNavigate }) => {
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div
-                      style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.75rem' }}
-                      onClick={() => setSelectedMedForDetails(med)}
-                      title="Click to view info and food warnings"
+                      style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}
                     >
                       {med.imageUrl && (
                         <img
                           src={med.imageUrl}
                           alt={med.name}
                           style={{
-                            width: '42px',
-                            height: '42px',
+                            width: '44px',
+                            height: '44px',
                             objectFit: 'cover',
                             borderRadius: 'var(--radius-md)',
                             border: `2px solid ${med.color || 'var(--primary-500)'}`,
-                            boxShadow: 'var(--shadow-sm)'
+                            boxShadow: 'var(--shadow-sm)',
+                            cursor: 'zoom-in'
                           }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedMedForPhoto(med);
+                          }}
+                          title="Tap to enlarge photo"
                         />
                       )}
-                      <div>
+                      <div
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => setSelectedMedForDetails(med)}
+                        title="Click to view info and food warnings"
+                      >
                         <h4 style={{ fontSize: '1.0625rem', fontWeight: 700, color: 'var(--primary-900)' }}>
                           {med.name} ℹ️
                         </h4>
@@ -399,6 +409,15 @@ export const TodayView: React.FC<TodayViewProps> = ({ onNavigate }) => {
         medications={medications}
         isOpen={isInteractionModalOpen}
         onClose={() => setIsInteractionModalOpen(false)}
+      />
+
+      {/* Enlarged Photo Lightbox Modal */}
+      <PhotoLightboxModal
+        isOpen={selectedMedForPhoto !== null}
+        onClose={() => setSelectedMedForPhoto(null)}
+        imageUrl={selectedMedForPhoto?.imageUrl}
+        title={selectedMedForPhoto?.name || ''}
+        subtitle={selectedMedForPhoto ? `${selectedMedForPhoto.strength} · ${selectedMedForPhoto.form}` : undefined}
       />
     </div>
   );

@@ -11,6 +11,7 @@ import { AdjustSupplyModal } from '../components/medications/AdjustSupplyModal';
 import { EditMedicationModal } from '../components/medications/EditMedicationModal';
 import { MedicationDetailsModal } from '../components/medications/MedicationDetailsModal';
 import { InteractionCheckerModal } from '../components/medications/InteractionCheckerModal';
+import { PhotoLightboxModal } from '../components/common/PhotoLightboxModal';
 
 interface MedicationsViewProps {
   onOpenAddModal: () => void;
@@ -22,6 +23,7 @@ export const MedicationsView: React.FC<MedicationsViewProps> = ({ onOpenAddModal
   const [selectedMedForSupply, setSelectedMedForSupply] = useState<Medication | null>(null);
   const [selectedMedForDetails, setSelectedMedForDetails] = useState<Medication | null>(null);
   const [selectedMedForEdit, setSelectedMedForEdit] = useState<Medication | null>(null);
+  const [selectedMedForPhoto, setSelectedMedForPhoto] = useState<Medication | null>(null);
   const [isInteractionModalOpen, setIsInteractionModalOpen] = useState(false);
 
   if (isLoading) {
@@ -185,25 +187,33 @@ export const MedicationsView: React.FC<MedicationsViewProps> = ({ onOpenAddModal
                 {/* Header */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div
-                    style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.75rem' }}
-                    onClick={() => setSelectedMedForDetails(med)}
-                    title="Click to view full medication details and food warnings"
+                    style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}
                   >
                     {med.imageUrl && (
                       <img
                         src={med.imageUrl}
                         alt={med.name}
                         style={{
-                          width: '44px',
-                          height: '44px',
+                          width: '46px',
+                          height: '46px',
                           objectFit: 'cover',
                           borderRadius: 'var(--radius-md)',
                           border: `2px solid ${med.color || 'var(--primary-500)'}`,
-                          boxShadow: 'var(--shadow-sm)'
+                          boxShadow: 'var(--shadow-sm)',
+                          cursor: 'zoom-in'
                         }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedMedForPhoto(med);
+                        }}
+                        title="Tap to enlarge photo"
                       />
                     )}
-                    <div>
+                    <div
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => setSelectedMedForDetails(med)}
+                      title="Click to view full medication details and food warnings"
+                    >
                       <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--primary-900)' }}>
                         {med.name} ℹ️
                       </h3>
@@ -355,6 +365,15 @@ export const MedicationsView: React.FC<MedicationsViewProps> = ({ onOpenAddModal
         medications={medications}
         isOpen={isInteractionModalOpen}
         onClose={() => setIsInteractionModalOpen(false)}
+      />
+
+      {/* Enlarged Photo Lightbox Modal */}
+      <PhotoLightboxModal
+        isOpen={selectedMedForPhoto !== null}
+        onClose={() => setSelectedMedForPhoto(null)}
+        imageUrl={selectedMedForPhoto?.imageUrl}
+        title={selectedMedForPhoto?.name || ''}
+        subtitle={selectedMedForPhoto ? `${selectedMedForPhoto.strength} · ${selectedMedForPhoto.form}` : undefined}
       />
     </div>
   );

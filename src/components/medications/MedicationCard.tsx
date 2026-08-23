@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ScheduledDoseItem } from '../../types/medication';
 import { formatTime12h } from '../../utils/dateUtils';
 import { formatSupplyLabel } from '../../utils/supplyUtils';
 import { Badge } from '../common/Badge';
 import { Icon } from '../common/Icon';
+import { PhotoLightboxModal } from '../common/PhotoLightboxModal';
 
 interface MedicationCardProps {
   item: ScheduledDoseItem;
@@ -20,6 +21,7 @@ export const MedicationCard: React.FC<MedicationCardProps> = ({
   onUndo,
   onSelect
 }) => {
+  const [isPhotoOpen, setIsPhotoOpen] = useState(false);
   const { medication, record, isOverdue } = item;
   const isTaken = record.status === 'taken';
   const isSkipped = record.status === 'skipped';
@@ -62,132 +64,151 @@ export const MedicationCard: React.FC<MedicationCardProps> = ({
   };
 
   return (
-    <div
-      className={`med-card ${isTaken ? 'status-taken' : ''}`}
-      style={{ '--card-accent': medication.color || 'var(--primary-600)' } as React.CSSProperties}
-    >
-      {/* Card Header: Pill icon, Names, and Status */}
-      <div className="med-card-header">
-        <div className="med-card-title-group" onClick={() => onSelect?.(medication.id)} style={{ cursor: onSelect ? 'pointer' : 'default' }}>
-          {medication.imageUrl ? (
-            <img
-              src={medication.imageUrl}
-              alt={medication.name}
-              style={{
-                width: '44px',
-                height: '44px',
-                objectFit: 'cover',
-                borderRadius: 'var(--radius-md)',
-                border: `2px solid ${medication.color || 'var(--primary-500)'}`,
-                boxShadow: 'var(--shadow-sm)'
-              }}
-            />
-          ) : (
-            <div
-              className="med-pill-icon"
-              style={{
-                backgroundColor: medication.color ? `${medication.color}18` : undefined,
-                color: medication.color || 'var(--primary-700)'
-              }}
-            >
-              <Icon name={medication.form === 'inhaler' ? 'activity' : 'pill'} size={22} />
-            </div>
-          )}
-          <div>
-            <h3 className="med-card-name">{medication.name}</h3>
-            {medication.genericName && (
-              <span className="med-card-generic">{medication.genericName}</span>
+    <>
+      <div
+        className={`med-card ${isTaken ? 'status-taken' : ''}`}
+        style={{ '--card-accent': medication.color || 'var(--primary-600)' } as React.CSSProperties}
+      >
+        {/* Card Header: Pill icon, Names, and Status */}
+        <div className="med-card-header">
+          <div className="med-card-title-group">
+            {medication.imageUrl ? (
+              <img
+                src={medication.imageUrl}
+                alt={medication.name}
+                style={{
+                  width: '46px',
+                  height: '46px',
+                  objectFit: 'cover',
+                  borderRadius: 'var(--radius-md)',
+                  border: `2px solid ${medication.color || 'var(--primary-500)'}`,
+                  boxShadow: 'var(--shadow-sm)',
+                  cursor: 'zoom-in'
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsPhotoOpen(true);
+                }}
+                title="Tap to enlarge photo"
+              />
+            ) : (
+              <div
+                className="med-pill-icon"
+                style={{
+                  backgroundColor: medication.color ? `${medication.color}18` : undefined,
+                  color: medication.color || 'var(--primary-700)',
+                  cursor: onSelect ? 'pointer' : 'default'
+                }}
+                onClick={() => onSelect?.(medication.id)}
+              >
+                <Icon name={medication.form === 'inhaler' ? 'activity' : 'pill'} size={22} />
+              </div>
             )}
+            <div onClick={() => onSelect?.(medication.id)} style={{ cursor: onSelect ? 'pointer' : 'default' }}>
+              <h3 className="med-card-name">{medication.name}</h3>
+              {medication.genericName && (
+                <span className="med-card-generic">{medication.genericName}</span>
+              )}
+            </div>
+          </div>
+
+          <div className="med-card-badge">{renderStatusBadge()}</div>
+        </div>
+
+        {/* Strength, Dose amount & Scheduled Time */}
+        <div className="med-card-details">
+          <div className="med-detail-item font-semibold">
+            <span>{medication.strength}</span>
+            <span className="text-muted">·</span>
+            <span>
+              {medication.doseAmount} {medication.doseUnit}
+              {medication.doseAmount > 1 && !medication.doseUnit.endsWith('s') ? 's' : ''}
+            </span>
+          </div>
+
+          <div className="med-detail-item text-muted">
+            <Icon name="clock" size={15} />
+            <span>{formattedTime}</span>
           </div>
         </div>
 
-        <div className="med-card-badge">{renderStatusBadge()}</div>
-      </div>
+        {/* Instructions / Caution if present */}
+        {medication.instructions && (
+          <div className="text-xs text-muted" style={{ fontStyle: 'italic' }}>
+            ℹ {medication.instructions}
+          </div>
+        )}
 
-      {/* Strength, Dose amount & Scheduled Time */}
-      <div className="med-card-details">
-        <div className="med-detail-item font-semibold">
-          <span>{medication.strength}</span>
-          <span className="text-muted">·</span>
-          <span>
-            {medication.doseAmount} {medication.doseUnit}
-            {medication.doseAmount > 1 && !medication.doseUnit.endsWith('s') ? 's' : ''}
-          </span>
-        </div>
+        {/* Footer: Supply remaining counter & Action button */}
+        <div className="med-card-footer">
+          <div
+            className={`med-supply-info ${
+              supplyInfo.isOut ? 'is-out' : supplyInfo.isLow ? 'is-low' : ''
+            }`}
+          >
+            {supplyInfo.isLow && <Icon name="alert" size={14} />}
+            <span>{supplyInfo.text}</span>
+          </div>
 
-        <div className="med-detail-item text-muted">
-          <Icon name="clock" size={15} />
-          <span>{formattedTime}</span>
-        </div>
-      </div>
-
-      {/* Instructions / Caution if present */}
-      {medication.instructions && (
-        <div className="text-xs text-muted" style={{ fontStyle: 'italic' }}>
-          ℹ {medication.instructions}
-        </div>
-      )}
-
-      {/* Footer: Supply remaining counter & Action button */}
-      <div className="med-card-footer">
-        <div
-          className={`med-supply-info ${
-            supplyInfo.isOut ? 'is-out' : supplyInfo.isLow ? 'is-low' : ''
-          }`}
-        >
-          {supplyInfo.isLow && <Icon name="alert" size={14} />}
-          <span>{supplyInfo.text}</span>
-        </div>
-
-        <div className="med-actions-group">
-          {isTaken ? (
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              onClick={() => onUndo?.(record.id)}
-              title="Undo taken dose"
-              aria-label="Undo taken dose"
-            >
-              <Icon name="rotate-ccw" size={14} />
-              <span>Undo</span>
-            </button>
-          ) : (
-            <>
-              {onSkip && !isSkipped && (
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm"
-                  onClick={() => onSkip(record.id)}
-                  title="Skip this dose"
-                  aria-label="Skip dose"
-                >
-                  Skip
-                </button>
-              )}
-              {isSkipped ? (
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  onClick={() => onUndo?.(record.id)}
-                >
-                  <Icon name="rotate-ccw" size={14} />
-                  <span>Undo</span>
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  className="btn btn-take"
-                  onClick={() => onTake(record.id)}
-                  aria-label={`Take ${medication.name}`}
-                >
-                  <Icon name="check" size={16} />
-                  <span>Take</span>
-                </button>
-              )}
-            </>
-          )}
+          <div className="med-actions-group">
+            {isTaken ? (
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => onUndo?.(record.id)}
+                title="Undo taken dose"
+                aria-label="Undo taken dose"
+              >
+                <Icon name="rotate-ccw" size={14} />
+                <span>Undo</span>
+              </button>
+            ) : (
+              <>
+                {onSkip && !isSkipped && (
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => onSkip(record.id)}
+                    title="Skip this dose"
+                    aria-label="Skip dose"
+                  >
+                    Skip
+                  </button>
+                )}
+                {isSkipped ? (
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => onUndo?.(record.id)}
+                  >
+                    <Icon name="rotate-ccw" size={14} />
+                    <span>Undo</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn btn-take"
+                    onClick={() => onTake(record.id)}
+                    aria-label={`Take ${medication.name}`}
+                  >
+                    <Icon name="check" size={16} />
+                    <span>Take</span>
+                  </button>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* Enlarged Photo Lightbox */}
+      <PhotoLightboxModal
+        isOpen={isPhotoOpen}
+        onClose={() => setIsPhotoOpen(false)}
+        imageUrl={medication.imageUrl}
+        title={medication.name}
+        subtitle={`${medication.strength} · ${medication.form}`}
+      />
+    </>
   );
 };
