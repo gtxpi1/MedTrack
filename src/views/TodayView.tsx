@@ -36,6 +36,13 @@ export const TodayView: React.FC<TodayViewProps> = ({ onNavigate }) => {
   const [selectedMedForDetails, setSelectedMedForDetails] = useState<Medication | null>(null);
   const [selectedMedForPhoto, setSelectedMedForPhoto] = useState<Medication | null>(null);
   const [isInteractionModalOpen, setIsInteractionModalOpen] = useState(false);
+  const [acknowledgedFingerprint, setAcknowledgedFingerprint] = useState<string>(() => {
+    try {
+      return localStorage.getItem('medtrack_acknowledged_interactions') || '';
+    } catch {
+      return '';
+    }
+  });
 
   if (isLoading) {
     return (
@@ -47,6 +54,18 @@ export const TodayView: React.FC<TodayViewProps> = ({ onNavigate }) => {
   }
 
   const interactions = InteractionService.analyzeCabinetInteractions(medications);
+  const currentFingerprint = interactions.map((i) => i.id).sort().join(',');
+  const isAcknowledged = interactions.length > 0 && acknowledgedFingerprint === currentFingerprint;
+  const isBannerVisible = interactions.length > 0 && !isAcknowledged;
+
+  const handleAcknowledge = () => {
+    try {
+      localStorage.setItem('medtrack_acknowledged_interactions', currentFingerprint);
+    } catch (e) {
+      console.error('Failed to save acknowledgement:', e);
+    }
+    setAcknowledgedFingerprint(currentFingerprint);
+  };
 
   // Filter scheduled doses
   const filteredDoses = todayDoses.filter((item) => {
@@ -70,7 +89,7 @@ export const TodayView: React.FC<TodayViewProps> = ({ onNavigate }) => {
             backgroundColor: 'var(--success-bg)',
             color: 'var(--success-text)',
             border: '1px solid var(--success-border)',
-            padding: '0.875rem 12.5rem',
+            padding: '0.875rem 1.25rem',
             borderRadius: 'var(--radius-md)',
             display: 'flex',
             alignItems: 'center',
@@ -84,38 +103,54 @@ export const TodayView: React.FC<TodayViewProps> = ({ onNavigate }) => {
         </div>
       )}
 
-      {/* Safety & Drug Interactions Banner Button */}
-      {interactions.length > 0 && (
+      {/* Safety & Drug Interactions Banner - Dismissible once read */}
+      {isBannerVisible && (
         <div
-          onClick={() => setIsInteractionModalOpen(true)}
           style={{
             backgroundColor: '#fffbeb',
             border: '1px solid #fde68a',
             borderRadius: 'var(--radius-md)',
-            padding: '0.75rem 1rem',
+            padding: '0.875rem 1rem',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            cursor: 'pointer',
-            transition: 'transform 0.15s ease'
+            gap: '0.75rem',
+            flexWrap: 'wrap'
           }}
-          title="Click to view food/beverage warnings and drug interaction report"
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <span style={{ fontSize: '1.25rem' }}>🛡️</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, minWidth: '260px' }}>
+            <span style={{ fontSize: '1.35rem' }}>🛡️</span>
             <div>
               <strong style={{ color: '#92400e', fontSize: '0.875rem' }}>
                 Safety & Food Warnings ({interactions.length} active notice{interactions.length > 1 ? 's' : ''})
               </strong>
-              <p className="text-xs text-muted" style={{ margin: 0, color: '#b45309' }}>
-                Includes Grapefruit, Alcohol, and medication combination precautions. Click to view details.
+              <p className="text-xs text-muted" style={{ margin: '0.15rem 0 0 0', color: '#b45309' }}>
+                Includes Grapefruit, Alcohol, and medication combination precautions.
               </p>
             </div>
           </div>
 
-          <button type="button" className="btn btn-secondary btn-sm" style={{ backgroundColor: '#ffffff' }}>
-            View Report
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              style={{ backgroundColor: '#ffffff', color: '#92400e', borderColor: '#fcd34d' }}
+              onClick={() => setIsInteractionModalOpen(true)}
+            >
+              View Report
+            </button>
+
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              style={{ color: '#92400e' }}
+              onClick={handleAcknowledge}
+              title="Acknowledge and dismiss from main screen"
+            >
+              <Icon name="check" size={14} />
+              <span>Dismiss</span>
+            </button>
+          </div>
         </div>
       )}
 
@@ -409,6 +444,8 @@ export const TodayView: React.FC<TodayViewProps> = ({ onNavigate }) => {
         medications={medications}
         isOpen={isInteractionModalOpen}
         onClose={() => setIsInteractionModalOpen(false)}
+        onAcknowledge={handleAcknowledge}
+        isAcknowledged={isAcknowledged}
       />
 
       {/* Enlarged Photo Lightbox Modal */}

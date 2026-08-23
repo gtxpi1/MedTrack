@@ -8,18 +8,29 @@ interface InteractionCheckerModalProps {
   medications: Medication[];
   isOpen: boolean;
   onClose: () => void;
+  onAcknowledge?: () => void;
+  isAcknowledged?: boolean;
 }
 
 export const InteractionCheckerModal: React.FC<InteractionCheckerModalProps> = ({
   medications,
   isOpen,
-  onClose
+  onClose,
+  onAcknowledge,
+  isAcknowledged = false
 }) => {
   if (!isOpen) return null;
 
   const interactions = InteractionService.analyzeCabinetInteractions(medications);
   const drugDrugInteractions = interactions.filter((i) => i.type === 'drug-drug');
   const foodInteractions = interactions.filter((i) => i.type === 'food-beverage');
+
+  const handleAcknowledgeAndClose = () => {
+    if (onAcknowledge) {
+      onAcknowledge();
+    }
+    onClose();
+  };
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -77,7 +88,7 @@ export const InteractionCheckerModal: React.FC<InteractionCheckerModalProps> = (
             </div>
 
             <Badge variant={interactions.length > 0 ? 'warning' : 'success'}>
-              {interactions.length > 0 ? 'Review Needed' : 'All Clear'}
+              {interactions.length > 0 ? (isAcknowledged ? 'Acknowledged' : 'Review Needed') : 'All Clear'}
             </Badge>
           </div>
 
@@ -163,10 +174,28 @@ export const InteractionCheckerModal: React.FC<InteractionCheckerModalProps> = (
           </div>
         </div>
 
-        <div className="modal-footer">
-          <button type="button" className="btn btn-primary" onClick={onClose}>
-            Close Safety Report
-          </button>
+        <div className="modal-footer" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+          <span className="text-xs text-muted">
+            {isAcknowledged ? '✓ Already acknowledged on main screen' : 'Notice will remain in each medication profile'}
+          </span>
+
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            {onAcknowledge && (
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleAcknowledgeAndClose}
+              >
+                <Icon name="check" size={16} />
+                <span>{isAcknowledged ? 'Done' : 'I Understand & Acknowledge'}</span>
+              </button>
+            )}
+            {!onAcknowledge && (
+              <button type="button" className="btn btn-primary" onClick={onClose}>
+                Done
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
