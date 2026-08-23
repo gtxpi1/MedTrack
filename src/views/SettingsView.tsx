@@ -2,11 +2,14 @@ import React, { useState } from 'react';
 import { useMedications } from '../hooks/useMedications';
 import { Icon } from '../components/common/Icon';
 import { Badge } from '../components/common/Badge';
+import { SyncCenterModal } from '../components/sync/SyncCenterModal';
+import { SyncService } from '../services/SyncService';
 
 export const SettingsView: React.FC = () => {
-  const { resetSampleData, medications, historyRecords } = useMedications();
+  const { resetSampleData, medications, historyRecords, refresh } = useMedications();
   const [resetting, setResetting] = useState(false);
   const [resetMessage, setResetMessage] = useState('');
+  const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
 
   const handleReset = async () => {
     if (confirm('Are you sure you want to reset to the initial sample medication dataset? Any custom data added in this session will be restored to defaults.')) {
@@ -20,7 +23,43 @@ export const SettingsView: React.FC = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      {/* 1. Storage & Architecture Status */}
+      
+      {/* 1. Multi-Device Sync & Backup */}
+      <div className="card" style={{ background: 'linear-gradient(135deg, #ffffff, #f0fdf4)', border: '1px solid var(--primary-200)' }}>
+        <div className="section-header" style={{ marginBottom: '0.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Icon name="refresh" size={20} className="text-primary" />
+            <h3 className="section-title">Phone & Tablet Sync Center</h3>
+          </div>
+          <Badge variant="success">Offline & QR Sync</Badge>
+        </div>
+
+        <p className="text-sm text-muted" style={{ marginBottom: '1rem' }}>
+          Transfer all your medications, supply counts, and photos between your phone and tablet in seconds without needing an account or cloud registration.
+        </p>
+
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => setIsSyncModalOpen(true)}
+          >
+            <Icon name="refresh" size={16} />
+            <span>Open Sync & Transfer Center</span>
+          </button>
+
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => SyncService.downloadBackupFile()}
+          >
+            <Icon name="download" size={16} />
+            <span>Download Backup (.json)</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 2. Storage & Architecture Status */}
       <div className="card">
         <div className="section-header" style={{ marginBottom: '1rem' }}>
           <h3 className="section-title">
@@ -44,13 +83,13 @@ export const SettingsView: React.FC = () => {
             <strong>{historyRecords.length} entries</strong>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0' }}>
-            <span className="text-muted">Cloud Synchronization</span>
-            <span className="text-muted">Ready for backend adapter</span>
+            <span className="text-muted">Device Transfer Protocol</span>
+            <strong>Direct QR Code & Encrypted JSON Stream</strong>
           </div>
         </div>
       </div>
 
-      {/* 2. PWA Readiness */}
+      {/* 3. PWA Readiness */}
       <div className="card">
         <div className="section-header" style={{ marginBottom: '0.75rem' }}>
           <h3 className="section-title">
@@ -80,7 +119,7 @@ export const SettingsView: React.FC = () => {
         </div>
       </div>
 
-      {/* 3. Sample Data Management */}
+      {/* 4. Sample Data Management */}
       <div className="card">
         <div className="section-header" style={{ marginBottom: '0.75rem' }}>
           <h3 className="section-title">
@@ -112,15 +151,22 @@ export const SettingsView: React.FC = () => {
         </div>
       </div>
 
-      {/* 4. Medical Information Notice */}
+      {/* 5. Medical Information Notice */}
       <div className="card" style={{ backgroundColor: 'var(--slate-50)', borderStyle: 'dashed' }}>
         <h4 style={{ fontSize: '0.9375rem', marginBottom: '0.375rem' }}>
           Medical Information & Safety Notice
         </h4>
         <p className="text-xs text-muted">
-          This system is an organization and tracking utility. It does not provide medical advice, diagnosis, treatment, or clinical recommendations. Drug information, scheduling reminders, and clinical interaction checking will be connected via official medical API integrations in subsequent phases.
+          This system is an organization and tracking utility. It does not provide medical advice, diagnosis, treatment, or clinical recommendations. Drug information, scheduling reminders, and clinical interaction checking are for reference purposes. Always consult your prescribing physician.
         </p>
       </div>
+
+      {/* Sync Center Modal */}
+      <SyncCenterModal
+        isOpen={isSyncModalOpen}
+        onClose={() => setIsSyncModalOpen(false)}
+        onDataImported={refresh}
+      />
     </div>
   );
 };

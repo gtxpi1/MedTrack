@@ -7,12 +7,14 @@ interface HeaderProps {
   currentView: AppView;
   onOpenAddModal: () => void;
   onNavigate: (view: AppView) => void;
+  onOpenSyncModal?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   currentView,
   onOpenAddModal,
-  onNavigate
+  onNavigate,
+  onOpenSyncModal
 }) => {
   const getHeaderInfo = () => {
     switch (currentView) {
@@ -61,6 +63,18 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       <div className="header-right">
+        {onOpenSyncModal && (
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={onOpenSyncModal}
+            title="Sync / Transfer data to tablet or phone"
+          >
+            <Icon name="refresh" size={15} />
+            <span>Sync Devices</span>
+          </button>
+        )}
+
         <button
           type="button"
           className="btn btn-primary btn-sm"

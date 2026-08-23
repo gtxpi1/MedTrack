@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { AppView } from '../../types/navigation';
 import { useMedications } from '../../hooks/useMedications';
 import { Sidebar } from './Sidebar';
 import { MobileNav } from './MobileNav';
 import { Header } from './Header';
 import { AddMedicationModal } from '../medications/AddMedicationModal';
+import { SyncCenterModal } from '../sync/SyncCenterModal';
 
 interface AppLayoutProps {
   currentView: AppView;
@@ -23,7 +24,8 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
   onCloseAddModal,
   children
 }) => {
-  const { stats, lowSupplyMedications, addMedication } = useMedications();
+  const { stats, lowSupplyMedications, addMedication, refresh } = useMedications();
+  const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
 
   return (
     <div className="app-root">
@@ -42,6 +44,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
           currentView={currentView}
           onOpenAddModal={onOpenAddModal}
           onNavigate={onNavigate}
+          onOpenSyncModal={() => setIsSyncModalOpen(true)}
         />
 
         <main className="content-container">{children}</main>
@@ -60,6 +63,13 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
         isOpen={isAddModalOpen}
         onClose={onCloseAddModal}
         onAdd={addMedication}
+      />
+
+      {/* Sync & Transfer Center Modal */}
+      <SyncCenterModal
+        isOpen={isSyncModalOpen}
+        onClose={() => setIsSyncModalOpen(false)}
+        onDataImported={refresh}
       />
     </div>
   );
