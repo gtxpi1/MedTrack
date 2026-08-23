@@ -29,7 +29,7 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
   const [genericName, setGenericName] = useState('');
   const [form, setForm] = useState<MedicationForm>('tablet');
   const [strength, setStrength] = useState('');
-  const [doseAmount, setDoseAmount] = useState<number>(1);
+  const [doseAmount, setDoseAmount] = useState<string>('1');
   const [doseUnit, setDoseUnit] = useState('tablet');
   const [frequency, setFrequency] = useState<ScheduleFrequency>('once-daily');
   
@@ -39,8 +39,8 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
   const [time3, setTime3] = useState('13:00');
   const [time4, setTime4] = useState('22:00');
 
-  const [currentSupply, setCurrentSupply] = useState<number>(30);
-  const [lowSupplyThreshold, setLowSupplyThreshold] = useState<number>(7);
+  const [currentSupply, setCurrentSupply] = useState<string>('30');
+  const [lowSupplyThreshold, setLowSupplyThreshold] = useState<string>('7');
   const [instructions, setInstructions] = useState('');
   const [notes, setNotes] = useState('');
   const [color, setColor] = useState('#0d9488');
@@ -116,15 +116,15 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
     setGenericName('');
     setForm('tablet');
     setStrength('');
-    setDoseAmount(1);
+    setDoseAmount('1');
     setDoseUnit('tablet');
     setFrequency('once-daily');
     setTime1('08:00');
     setTime2('20:00');
     setTime3('13:00');
     setTime4('22:00');
-    setCurrentSupply(30);
-    setLowSupplyThreshold(7);
+    setCurrentSupply('30');
+    setLowSupplyThreshold('7');
     setInstructions('');
     setNotes('');
     setColor('#0d9488');
@@ -139,6 +139,13 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
     onClose();
   };
 
+  const adjustDoseAmount = (delta: number) => {
+    const current = parseFloat(doseAmount) || 0;
+    const next = Math.max(0.25, current + delta);
+    // Format nicely without trailing zeros if whole
+    setDoseAmount(String(Number(next.toFixed(2))));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
@@ -146,7 +153,7 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
       return;
     }
     if (!strength.trim()) {
-      setErrorMsg('Strength (e.g. 500 mg or 0.1%) is required');
+      setErrorMsg('Strength (e.g. 500 mg, 150 mg, or 0.1%) is required');
       return;
     }
 
@@ -164,12 +171,16 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
         scheduledTimes.push(time1 || '08:00', time3 || '12:00', time2 || '18:00', time4 || '22:00');
       }
 
+      const parsedDose = Math.max(0.25, parseFloat(doseAmount) || 1);
+      const parsedSupply = Math.max(0, parseInt(currentSupply, 10) || 0);
+      const parsedThreshold = Math.max(1, parseInt(lowSupplyThreshold, 10) || 7);
+
       await onAdd({
         name: name.trim(),
         genericName: genericName.trim() || undefined,
         form,
         strength: strength.trim(),
-        doseAmount: Math.max(0.25, Number(doseAmount) || 1),
+        doseAmount: parsedDose,
         doseUnit: doseUnit.trim() || 'tablet',
         frequency,
         schedule: {
@@ -181,9 +192,9 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
           isActive: true
         },
         supply: {
-          currentSupply: Math.max(0, Number(currentSupply) || 0),
-          lowSupplyThreshold: Math.max(1, Number(lowSupplyThreshold) || 7),
-          supplyUnit: doseUnit + (doseAmount > 1 || Number(currentSupply) > 1 ? 's' : ''),
+          currentSupply: parsedSupply,
+          lowSupplyThreshold: parsedThreshold,
+          supplyUnit: doseUnit + (parsedDose > 1 || parsedSupply > 1 ? 's' : ''),
           refillQuantity: 30
         },
         instructions: instructions.trim() || undefined,
@@ -231,12 +242,12 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
             {/* Medication Name with Autocomplete Dropdown */}
             <div className="form-group" style={{ position: 'relative' }} ref={suggestionsRef}>
               <label className="form-label">
-                Medication Name * <span className="text-xs text-muted font-normal">(Start typing for suggestions)</span>
+                Medication Name * <span className="text-xs text-muted font-normal">(Type for instant suggestions)</span>
               </label>
               <input
                 type="text"
                 className="form-input"
-                placeholder="e.g., Betaderm, Venlafaxine, Acetaminophen"
+                placeholder="e.g., Quetiapine XR, Betaderm, Venlafaxine"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 onFocus={() => {
@@ -306,7 +317,7 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
                 <input
                   type="text"
                   className="form-input"
-                  placeholder="e.g., Betamethasone Valerate / Effexor"
+                  placeholder="e.g., Seroquel XR / Effexor"
                   value={genericName}
                   onChange={(e) => setGenericName(e.target.value)}
                 />
@@ -317,9 +328,10 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
                 <input
                   type="text"
                   className="form-input"
-                  placeholder="e.g., 0.1%, 75 mg, 500 mg"
+                  placeholder="e.g., 150 mg, 500 mg, 0.1%"
                   value={strength}
                   onChange={(e) => setStrength(e.target.value)}
+                  onFocus={(e) => e.target.select()}
                   required
                 />
                 {/* Quick Strength Selection Pills if available */}
@@ -376,24 +388,67 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
                 </select>
               </div>
 
+              {/* Dose Size with + / - Stepper and Free-Text backspaceable input */}
               <div className="form-group">
                 <label className="form-label">Dose Size (per intake)</label>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <input
-                    type="number"
-                    min="0.25"
-                    step="any"
-                    className="form-input"
-                    value={doseAmount}
-                    onChange={(e) => setDoseAmount(parseFloat(e.target.value) || 1)}
-                    style={{ width: '80px' }}
-                  />
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      border: '1px solid var(--border-color)',
+                      borderRadius: 'var(--radius-md)',
+                      backgroundColor: '#ffffff',
+                      overflow: 'hidden',
+                      height: '42px'
+                    }}
+                  >
+                    <button
+                      type="button"
+                      className="btn btn-ghost"
+                      style={{ width: '36px', height: '100%', padding: 0, fontSize: '1.25rem', fontWeight: 700, borderRadius: 0 }}
+                      onClick={() => adjustDoseAmount(-1)}
+                      title="Decrease dose"
+                    >
+                      -
+                    </button>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      className="form-input"
+                      style={{
+                        width: '54px',
+                        textAlign: 'center',
+                        border: 'none',
+                        height: '100%',
+                        padding: '0 4px',
+                        fontWeight: 700,
+                        fontSize: '1.05rem',
+                        boxShadow: 'none'
+                      }}
+                      value={doseAmount}
+                      onChange={(e) => setDoseAmount(e.target.value)}
+                      onFocus={(e) => e.target.select()}
+                      placeholder="1"
+                    />
+                    <button
+                      type="button"
+                      className="btn btn-ghost"
+                      style={{ width: '36px', height: '100%', padding: 0, fontSize: '1.25rem', fontWeight: 700, borderRadius: 0 }}
+                      onClick={() => adjustDoseAmount(1)}
+                      title="Increase dose"
+                    >
+                      +
+                    </button>
+                  </div>
+
                   <input
                     type="text"
                     className="form-input"
-                    placeholder="unit (e.g. tablet, capsule, application)"
+                    placeholder="unit (e.g. tablet, capsule)"
                     value={doseUnit}
                     onChange={(e) => setDoseUnit(e.target.value)}
+                    style={{ flex: 1 }}
                   />
                 </div>
               </div>
@@ -498,22 +553,26 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
               <div className="form-group">
                 <label className="form-label">Current Supply Count</label>
                 <input
-                  type="number"
-                  min="0"
+                  type="text"
+                  inputMode="numeric"
                   className="form-input"
                   value={currentSupply}
-                  onChange={(e) => setCurrentSupply(parseInt(e.target.value, 10) || 0)}
+                  onChange={(e) => setCurrentSupply(e.target.value)}
+                  onFocus={(e) => e.target.select()}
+                  placeholder="30"
                 />
               </div>
 
               <div className="form-group">
                 <label className="form-label">Low Stock Alert Threshold</label>
                 <input
-                  type="number"
-                  min="1"
+                  type="text"
+                  inputMode="numeric"
                   className="form-input"
                   value={lowSupplyThreshold}
-                  onChange={(e) => setLowSupplyThreshold(parseInt(e.target.value, 10) || 7)}
+                  onChange={(e) => setLowSupplyThreshold(e.target.value)}
+                  onFocus={(e) => e.target.select()}
+                  placeholder="7"
                 />
               </div>
             </div>
@@ -548,7 +607,7 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
               <input
                 type="text"
                 className="form-input"
-                placeholder="e.g. Apply thin layer to affected area / Take with food"
+                placeholder="e.g. Take at bedtime / Take with food"
                 value={instructions}
                 onChange={(e) => setInstructions(e.target.value)}
               />
@@ -559,7 +618,7 @@ export const AddMedicationModal: React.FC<AddMedicationModalProps> = ({
               <textarea
                 className="form-textarea"
                 rows={2}
-                placeholder="e.g. Prescribed by Dr. Smith for seasonal review"
+                placeholder="e.g. Prescribed by doctor for evening routine"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
               />

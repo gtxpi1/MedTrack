@@ -15,14 +15,14 @@ export const AdjustSupplyModal: React.FC<AdjustSupplyModalProps> = ({
   onClose,
   onSaveSupply
 }) => {
-  const [supply, setSupply] = useState<number>(0);
-  const [threshold, setThreshold] = useState<number>(7);
+  const [supply, setSupply] = useState<string>('0');
+  const [threshold, setThreshold] = useState<string>('7');
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (medication) {
-      setSupply(medication.supply.currentSupply);
-      setThreshold(medication.supply.lowSupplyThreshold || 7);
+      setSupply(String(medication.supply.currentSupply));
+      setThreshold(String(medication.supply.lowSupplyThreshold || 7));
     }
   }, [medication]);
 
@@ -32,7 +32,9 @@ export const AdjustSupplyModal: React.FC<AdjustSupplyModalProps> = ({
     e.preventDefault();
     setIsSaving(true);
     try {
-      await onSaveSupply(medication.id, Math.max(0, supply), Math.max(1, threshold));
+      const parsedSupply = Math.max(0, parseInt(supply, 10) || 0);
+      const parsedThreshold = Math.max(1, parseInt(threshold, 10) || 7);
+      await onSaveSupply(medication.id, parsedSupply, parsedThreshold);
       onClose();
     } catch (err) {
       console.error('Failed to update supply:', err);
@@ -42,7 +44,8 @@ export const AdjustSupplyModal: React.FC<AdjustSupplyModalProps> = ({
   };
 
   const adjustBy = (delta: number) => {
-    setSupply((prev) => Math.max(0, prev + delta));
+    const current = parseInt(supply, 10) || 0;
+    setSupply(String(Math.max(0, current + delta)));
   };
 
   return (
@@ -81,8 +84,8 @@ export const AdjustSupplyModal: React.FC<AdjustSupplyModalProps> = ({
                 </button>
 
                 <input
-                  type="number"
-                  min="0"
+                  type="text"
+                  inputMode="numeric"
                   className="form-input"
                   style={{
                     fontSize: '1.75rem',
@@ -93,7 +96,9 @@ export const AdjustSupplyModal: React.FC<AdjustSupplyModalProps> = ({
                     color: 'var(--primary-700)'
                   }}
                   value={supply}
-                  onChange={(e) => setSupply(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                  onChange={(e) => setSupply(e.target.value)}
+                  onFocus={(e) => e.target.select()}
+                  placeholder="0"
                   autoFocus
                 />
 
@@ -114,7 +119,7 @@ export const AdjustSupplyModal: React.FC<AdjustSupplyModalProps> = ({
                 <button type="button" className="btn btn-secondary btn-sm" onClick={() => adjustBy(30)}>+30</button>
                 <button type="button" className="btn btn-secondary btn-sm" onClick={() => adjustBy(60)}>+60</button>
                 <button type="button" className="btn btn-secondary btn-sm" onClick={() => adjustBy(90)}>+90</button>
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setSupply(0)} style={{ color: 'var(--danger-text)' }}>Set to 0</button>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setSupply('0')} style={{ color: 'var(--danger-text)' }}>Set to 0</button>
               </div>
             </div>
 
@@ -125,12 +130,14 @@ export const AdjustSupplyModal: React.FC<AdjustSupplyModalProps> = ({
               </label>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <input
-                  type="number"
-                  min="1"
+                  type="text"
+                  inputMode="numeric"
                   className="form-input"
                   style={{ maxWidth: '100px' }}
                   value={threshold}
-                  onChange={(e) => setThreshold(Math.max(1, parseInt(e.target.value, 10) || 7))}
+                  onChange={(e) => setThreshold(e.target.value)}
+                  onFocus={(e) => e.target.select()}
+                  placeholder="7"
                 />
                 <span className="text-xs text-muted">
                   Alert me when supply drops to or below this amount.
