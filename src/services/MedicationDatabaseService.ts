@@ -322,11 +322,29 @@ export const BUILTIN_MEDICATION_DIRECTORY: DrugSuggestion[] = [
 
   // --- Analgesics & Pain Relievers ---
   {
+    name: 'Novo-Gesic Forte',
+    genericName: 'Acetaminophen 500 mg',
+    brandName: 'Novo-Gesic Forte (Novopharm / Teva)',
+    form: 'tablet',
+    commonStrengths: ['500 mg', '325 mg'],
+    defaultDoseUnit: 'tablet',
+    category: 'Analgesic / Antipyretic (Acetaminophen Forte)'
+  },
+  {
+    name: 'Novo-Gesic',
+    genericName: 'Acetaminophen',
+    brandName: 'Novo-Gesic',
+    form: 'tablet',
+    commonStrengths: ['500 mg', '325 mg'],
+    defaultDoseUnit: 'tablet',
+    category: 'Analgesic / Antipyretic (Acetaminophen)'
+  },
+  {
     name: 'Acetaminophen',
     genericName: 'Acetaminophen / Paracetamol',
-    brandName: 'Tylenol',
+    brandName: 'Tylenol / Novo-Gesic',
     form: 'tablet',
-    commonStrengths: ['325 mg', '500 mg (Extra Strength)', '650 mg (Extended Relief)'],
+    commonStrengths: ['325 mg', '500 mg (Extra Strength / Forte)', '650 mg (Extended Relief)'],
     defaultDoseUnit: 'tablet',
     category: 'Analgesic / Antipyretic'
   },

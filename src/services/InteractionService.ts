@@ -130,7 +130,7 @@ export class InteractionService {
     const lower = medName.toLowerCase();
 
     for (const key of Object.keys(CLINICAL_INFO_REGISTRY)) {
-      if (lower.includes(key)) {
+      if (lower.includes(key) || (key === 'acetaminophen' && (lower.includes('novo-gesic') || lower.includes('novogesic') || lower.includes('tylenol')))) {
         return CLINICAL_INFO_REGISTRY[key];
       }
     }
@@ -162,7 +162,7 @@ export class InteractionService {
     const hasQuetiapine = names.some((n) => n.includes('quetiapine') || n.includes('seroquel'));
     const hasVenlafaxine = names.some((n) => n.includes('venlafaxine') || n.includes('effexor'));
     const hasNSAID = names.some((n) => n.includes('ibuprofen') || n.includes('naproxen') || n.includes('advil') || n.includes('aspirin'));
-    const hasAcetaminophen = names.some((n) => n.includes('acetaminophen') || n.includes('tylenol') || n.includes('paracetamol'));
+    const hasAcetaminophen = names.some((n) => n.includes('acetaminophen') || n.includes('tylenol') || n.includes('paracetamol') || n.includes('novo-gesic') || n.includes('novogesic'));
     const hasStatin = names.some((n) => n.includes('atorvastatin') || n.includes('simvastatin') || n.includes('lipitor'));
     const hasLisinopril = names.some((n) => n.includes('lisinopril') || n.includes('losartan'));
 
