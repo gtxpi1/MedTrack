@@ -23,16 +23,16 @@ export const BUILTIN_MEDICATION_DIRECTORY: DrugSuggestion[] = [
     genericName: 'Quetiapine Fumarate',
     brandName: 'Seroquel / Seroquel XR',
     form: 'tablet',
-    commonStrengths: ['25 mg', '50 mg', '100 mg', '200 mg', '300 mg', '400 mg'],
+    commonStrengths: ['25 mg', '50 mg', '100 mg', '150 mg', '200 mg', '300 mg', '400 mg'],
     defaultDoseUnit: 'tablet',
     category: 'Atypical Antipsychotic / Mood'
   },
   {
     name: 'Seroquel',
     genericName: 'Quetiapine Fumarate',
-    brandName: 'Seroquel',
+    brandName: 'Seroquel / Seroquel XR',
     form: 'tablet',
-    commonStrengths: ['25 mg', '50 mg', '100 mg', '200 mg', '300 mg'],
+    commonStrengths: ['25 mg', '50 mg', '100 mg', '150 mg', '200 mg', '300 mg', '400 mg'],
     defaultDoseUnit: 'tablet',
     category: 'Atypical Antipsychotic'
   },
