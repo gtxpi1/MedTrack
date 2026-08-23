@@ -4,18 +4,23 @@ import { Medication } from '../types/medication';
 import { formatTime12h } from '../utils/dateUtils';
 import { calculateDaysRemaining, isLowSupply } from '../utils/supplyUtils';
 import { MedicationDatabaseService } from '../services/MedicationDatabaseService';
+import { InteractionService } from '../services/InteractionService';
 import { Badge } from '../components/common/Badge';
 import { Icon } from '../components/common/Icon';
 import { AdjustSupplyModal } from '../components/medications/AdjustSupplyModal';
+import { MedicationDetailsModal } from '../components/medications/MedicationDetailsModal';
+import { InteractionCheckerModal } from '../components/medications/InteractionCheckerModal';
 
 interface MedicationsViewProps {
   onOpenAddModal: () => void;
 }
 
 export const MedicationsView: React.FC<MedicationsViewProps> = ({ onOpenAddModal }) => {
-  const { medications, deleteMedication, refillMedication, updateSupply, isLoading } = useMedications();
+  const { medications, deleteMedication, updateSupply, isLoading } = useMedications();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMedForSupply, setSelectedMedForSupply] = useState<Medication | null>(null);
+  const [selectedMedForDetails, setSelectedMedForDetails] = useState<Medication | null>(null);
+  const [isInteractionModalOpen, setIsInteractionModalOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -25,6 +30,8 @@ export const MedicationsView: React.FC<MedicationsViewProps> = ({ onOpenAddModal
       </div>
     );
   }
+
+  const interactions = InteractionService.analyzeCabinetInteractions(medications);
 
   const filteredMeds = medications.filter((m) => {
     const q = searchQuery.toLowerCase().trim();
@@ -42,9 +49,9 @@ export const MedicationsView: React.FC<MedicationsViewProps> = ({ onOpenAddModal
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-      {/* Header controls: Search & Count */}
+      {/* Header controls: Search & Action Buttons */}
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
-        <div style={{ position: 'relative', flex: '1', minWidth: '240px', maxWidth: '400px' }}>
+        <div style={{ position: 'relative', flex: '1', minWidth: '240px', maxWidth: '380px' }}>
           <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--slate-400)' }}>
             <Icon name="search" size={18} />
           </span>
@@ -67,10 +74,27 @@ export const MedicationsView: React.FC<MedicationsViewProps> = ({ onOpenAddModal
           )}
         </div>
 
-        <button type="button" className="btn btn-primary" onClick={onOpenAddModal}>
-          <Icon name="plus" size={18} />
-          <span>Add Medication</span>
-        </button>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            style={{
+              borderColor: interactions.length > 0 ? '#f59e0b' : undefined,
+              backgroundColor: interactions.length > 0 ? '#fffbeb' : undefined,
+              color: interactions.length > 0 ? '#92400e' : undefined
+            }}
+            onClick={() => setIsInteractionModalOpen(true)}
+            title="Check drug-drug interactions and food restrictions"
+          >
+            <Icon name="alert" size={18} />
+            <span>Safety & Interactions {interactions.length > 0 && `(${interactions.length})`}</span>
+          </button>
+
+          <button type="button" className="btn btn-primary" onClick={onOpenAddModal}>
+            <Icon name="plus" size={18} />
+            <span>Add Medication</span>
+          </button>
+        </div>
       </div>
 
       {/* Medication List */}
@@ -158,8 +182,14 @@ export const MedicationsView: React.FC<MedicationsViewProps> = ({ onOpenAddModal
               >
                 {/* Header */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <div>
-                    <h3 style={{ fontSize: '1.125rem', fontWeight: 700 }}>{med.name}</h3>
+                  <div
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => setSelectedMedForDetails(med)}
+                    title="Click to view full medication details and food warnings"
+                  >
+                    <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--primary-900)' }}>
+                      {med.name} ℹ️
+                    </h3>
                     {med.genericName && (
                       <span className="text-xs text-muted">{med.genericName}</span>
                     )}
@@ -226,7 +256,17 @@ export const MedicationsView: React.FC<MedicationsViewProps> = ({ onOpenAddModal
 
                 {/* Actions */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto', paddingTop: '0.5rem', borderTop: '1px solid var(--border-subtle)', flexWrap: 'wrap', gap: '0.5rem' }}>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <div style={{ display: 'flex', gap: '0.375rem', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => setSelectedMedForDetails(med)}
+                      title="View what to avoid eating/drinking and clinical guide"
+                    >
+                      <Icon name="pill" size={14} />
+                      <span>Info & Warnings</span>
+                    </button>
+
                     <button
                       type="button"
                       className="btn btn-secondary btn-sm"
@@ -235,16 +275,6 @@ export const MedicationsView: React.FC<MedicationsViewProps> = ({ onOpenAddModal
                     >
                       <Icon name="package" size={14} />
                       <span>Edit Count</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      className="btn btn-secondary btn-sm"
-                      onClick={() => refillMedication(med.id, med.supply.refillQuantity || 30)}
-                      title="Add 30 to supply"
-                    >
-                      <Icon name="refresh" size={14} />
-                      <span>+30 Refill</span>
                     </button>
                   </div>
 
@@ -273,6 +303,21 @@ export const MedicationsView: React.FC<MedicationsViewProps> = ({ onOpenAddModal
         isOpen={selectedMedForSupply !== null}
         onClose={() => setSelectedMedForSupply(null)}
         onSaveSupply={updateSupply}
+      />
+
+      {/* Medication Details & Food Precautions Modal */}
+      <MedicationDetailsModal
+        medication={selectedMedForDetails}
+        isOpen={selectedMedForDetails !== null}
+        onClose={() => setSelectedMedForDetails(null)}
+        onOpenSupplyEditor={(med) => setSelectedMedForSupply(med)}
+      />
+
+      {/* Safety & Interactions Modal */}
+      <InteractionCheckerModal
+        medications={medications}
+        isOpen={isInteractionModalOpen}
+        onClose={() => setIsInteractionModalOpen(false)}
       />
     </div>
   );

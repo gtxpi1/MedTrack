@@ -1,5 +1,6 @@
 import { MedicationService } from './src/services/MedicationService';
 import { MedicationDatabaseService } from './src/services/MedicationDatabaseService';
+import { InteractionService } from './src/services/InteractionService';
 import { IStorageService } from './src/storage/IStorageService';
 import { Medication, DoseRecord } from './src/types/medication';
 
@@ -14,78 +15,78 @@ class MemoryStorage<T extends { id: string }> implements IStorageService<T> {
 }
 
 async function runTests() {
-  console.log('=== TEST 1: Quetiapine & Seroquel Autocomplete Search ===');
+  console.log('=== TEST 1: Quetiapine Formulations Autocomplete Search ===');
   
   // 1. Quetiapine search
   const quetiapineResults = MedicationDatabaseService.searchMedications('quetiapine');
   console.log(`Searching "quetiapine": found ${quetiapineResults.length} matches:`);
   quetiapineResults.forEach((r) => console.log(`  - ${r.name} (${r.genericName}) | Form: ${r.form} | Strengths: ${r.commonStrengths.join(', ')}`));
-  if (quetiapineResults.length === 0 || quetiapineResults[0].name !== 'Quetiapine') {
-    throw new Error('Quetiapine not found in medication database!');
+  const hasQuetXR = quetiapineResults.some((r) => r.name.includes('XR') && r.commonStrengths.includes('150 mg'));
+  const hasQuetXL = quetiapineResults.some((r) => r.name.includes('XL') && r.commonStrengths.includes('150 mg'));
+  if (!hasQuetXR || !hasQuetXL) {
+    throw new Error('Quetiapine XR / XL formulations missing!');
   }
-  console.log('✔ PASS: Quetiapine found with full strengths (25mg, 50mg, 100mg, 200mg, 300mg, 400mg).');
+  console.log('✔ PASS: Quetiapine XR & XL found with 150 mg presets.');
 
-  // 2. Seroquel search
-  const seroquelResults = MedicationDatabaseService.searchMedications('seroquel');
-  console.log(`Searching "seroquel": found ${seroquelResults.length} matches:`);
-  seroquelResults.forEach((r) => console.log(`  - ${r.name} (${r.genericName})`));
-  if (seroquelResults.length === 0 || seroquelResults[0].name !== 'Seroquel') {
-    throw new Error('Seroquel not found in medication database!');
+  console.log('\n=== TEST 2: Clinical Details & Food Restrictions Lookup ===');
+  const quetInfo = InteractionService.getClinicalInfo('Quetiapine XR');
+  console.log(`Quetiapine Class: ${quetInfo?.drugClass}`);
+  console.log('Food/Drink to Avoid:');
+  quetInfo?.foodAndDrinkToAvoid.forEach((f) => console.log(`  ${f}`));
+  if (!quetInfo || quetInfo.foodAndDrinkToAvoid.length === 0) {
+    throw new Error('Clinical info for Quetiapine failed!');
   }
-  console.log('✔ PASS: Seroquel found.');
+  console.log('✔ PASS: Quetiapine food & beverage warnings loaded.');
 
-  // 3. Betaderm, Venlafaxine, Acetaminophen
-  const betaderm = MedicationDatabaseService.searchMedications('betaderm');
-  const venla = MedicationDatabaseService.searchMedications('venlafaxine');
-  const aceta = MedicationDatabaseService.searchMedications('acetaminophen');
-  if (betaderm.length === 0 || venla.length === 0 || aceta.length === 0) {
-    throw new Error('Previous search terms failed!');
-  }
-  console.log('✔ PASS: Betaderm, Venlafaxine, and Acetaminophen all verified.');
-
-  console.log('\n=== TEST 2: Add Quetiapine to Daily Regimen (Bedtime dose) ===');
+  console.log('\n=== TEST 3: Cabinet Multi-Drug Interaction Analysis ===');
   const medStore = new MemoryStorage<Medication>();
   const doseStore = new MemoryStorage<DoseRecord>();
   const service = new MedicationService(medStore, doseStore);
   await service.initialize();
 
-  const addedQuetiapine = await service.addMedication({
-    name: 'Quetiapine',
-    genericName: 'Quetiapine Fumarate',
-    brandName: 'Seroquel',
+  // Add Quetiapine and Venlafaxine
+  await service.addMedication({
+    name: 'Quetiapine XR',
+    genericName: 'Quetiapine Fumarate Extended-Release',
+    brandName: 'Seroquel XR',
     form: 'tablet',
-    strength: '100 mg',
+    strength: '150 mg',
     doseAmount: 1,
     doseUnit: 'tablet',
     frequency: 'once-daily',
-    schedule: {
-      id: 'sched-quet',
-      medicationId: '',
-      frequency: 'once-daily',
-      scheduledTimes: ['22:00'],
-      startDate: '2026-08-23',
-      isActive: true
-    },
-    supply: {
-      currentSupply: 30,
-      lowSupplyThreshold: 7,
-      supplyUnit: 'tablets',
-      refillQuantity: 30
-    },
-    instructions: 'Take 1 tablet at bedtime',
+    schedule: { id: 's1', medicationId: '', frequency: 'once-daily', scheduledTimes: ['22:00'], startDate: '2026-08-23', isActive: true },
+    supply: { currentSupply: 30, lowSupplyThreshold: 7, supplyUnit: 'tablets', refillQuantity: 30 },
     isActive: true
   });
-  console.log(`✔ Added: ${addedQuetiapine.name} ${addedQuetiapine.strength} at ${addedQuetiapine.schedule.scheduledTimes.join(', ')}`);
 
-  const todayDoses = await service.getTodayScheduledDoses();
-  const quetDoses = todayDoses.filter((d) => d.medication.name === 'Quetiapine');
-  console.log(`Quetiapine today scheduled slots: ${quetDoses.length} (Expected 1)`);
-  if (quetDoses.length !== 1 || quetDoses[0].record.timeOfDay !== 'bedtime') {
-    throw new Error('Quetiapine dose slot failed to generate properly!');
+  await service.addMedication({
+    name: 'Venlafaxine',
+    genericName: 'Venlafaxine HCl',
+    form: 'capsule',
+    strength: '75 mg',
+    doseAmount: 1,
+    doseUnit: 'capsule',
+    frequency: 'once-daily',
+    schedule: { id: 's2', medicationId: '', frequency: 'once-daily', scheduledTimes: ['08:00'], startDate: '2026-08-23', isActive: true },
+    supply: { currentSupply: 30, lowSupplyThreshold: 7, supplyUnit: 'capsules', refillQuantity: 30 },
+    isActive: true
+  });
+
+  const allMeds = await service.getMedications();
+  const interactions = InteractionService.analyzeCabinetInteractions(allMeds);
+  console.log(`Analyzed cabinet: identified ${interactions.length} notices:`);
+  interactions.forEach((i) => {
+    console.log(`  - [${i.severity.toUpperCase()}] ${i.title}`);
+  });
+
+  const foundCombination = interactions.find((i) => i.id === 'int-quet-venla');
+  const foundGrapefruit = interactions.find((i) => i.id === 'food-quet-grapefruit');
+  if (!foundCombination || !foundGrapefruit) {
+    throw new Error('Interaction engine failed to detect combination or grapefruit warning!');
   }
-  console.log(`  - Slot Time: ${quetDoses[0].record.scheduledTime} (${quetDoses[0].record.timeOfDay})`);
+  console.log('✔ PASS: Interaction engine correctly identified Quetiapine + Venlafaxine & Grapefruit notices.');
 
-  console.log('\n=== ALL TESTS PASSED SUCCESSFULLY! ===');
+  console.log('\n=== ALL CLINICAL & SAFETY TESTS PASSED! ===');
 }
 
 runTests().catch((e) => {

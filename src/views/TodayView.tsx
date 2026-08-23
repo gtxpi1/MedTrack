@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
 import { useMedications } from '../hooks/useMedications';
 import { AppView } from '../types/navigation';
+import { Medication, TimeOfDay } from '../types/medication';
 import { MedicationCard } from '../components/medications/MedicationCard';
 import { SupplyAlertCard } from '../components/medications/SupplyAlertCard';
 import { ProgressBar } from '../components/common/ProgressBar';
 import { Icon } from '../components/common/Icon';
-import { TimeOfDay } from '../types/medication';
 import { calculateDaysRemaining } from '../utils/supplyUtils';
+import { InteractionService } from '../services/InteractionService';
+import { MedicationDetailsModal } from '../components/medications/MedicationDetailsModal';
+import { InteractionCheckerModal } from '../components/medications/InteractionCheckerModal';
 
 interface TodayViewProps {
   onNavigate: (view: AppView) => void;
@@ -14,6 +17,7 @@ interface TodayViewProps {
 
 export const TodayView: React.FC<TodayViewProps> = ({ onNavigate }) => {
   const {
+    medications,
     todayDoses,
     asNeededMedications,
     lowSupplyMedications,
@@ -28,6 +32,8 @@ export const TodayView: React.FC<TodayViewProps> = ({ onNavigate }) => {
 
   const [activeFilter, setActiveFilter] = useState<'all' | TimeOfDay | 'pending'>('all');
   const [prnNotice, setPrnNotice] = useState<string>('');
+  const [selectedMedForDetails, setSelectedMedForDetails] = useState<Medication | null>(null);
+  const [isInteractionModalOpen, setIsInteractionModalOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -37,6 +43,8 @@ export const TodayView: React.FC<TodayViewProps> = ({ onNavigate }) => {
       </div>
     );
   }
+
+  const interactions = InteractionService.analyzeCabinetInteractions(medications);
 
   // Filter scheduled doses
   const filteredDoses = todayDoses.filter((item) => {
@@ -60,7 +68,7 @@ export const TodayView: React.FC<TodayViewProps> = ({ onNavigate }) => {
             backgroundColor: 'var(--success-bg)',
             color: 'var(--success-text)',
             border: '1px solid var(--success-border)',
-            padding: '0.875rem 1.25rem',
+            padding: '0.875rem 12.5rem',
             borderRadius: 'var(--radius-md)',
             display: 'flex',
             alignItems: 'center',
@@ -71,6 +79,41 @@ export const TodayView: React.FC<TodayViewProps> = ({ onNavigate }) => {
         >
           <Icon name="check-circle" size={18} />
           <span>{prnNotice}</span>
+        </div>
+      )}
+
+      {/* Safety & Drug Interactions Banner Button */}
+      {interactions.length > 0 && (
+        <div
+          onClick={() => setIsInteractionModalOpen(true)}
+          style={{
+            backgroundColor: '#fffbeb',
+            border: '1px solid #fde68a',
+            borderRadius: 'var(--radius-md)',
+            padding: '0.75rem 1rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            cursor: 'pointer',
+            transition: 'transform 0.15s ease'
+          }}
+          title="Click to view food/beverage warnings and drug interaction report"
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <span style={{ fontSize: '1.25rem' }}>🛡️</span>
+            <div>
+              <strong style={{ color: '#92400e', fontSize: '0.875rem' }}>
+                Safety & Food Warnings ({interactions.length} active notice{interactions.length > 1 ? 's' : ''})
+              </strong>
+              <p className="text-xs text-muted" style={{ margin: 0, color: '#b45309' }}>
+                Includes Grapefruit, Alcohol, and medication combination precautions. Click to view details.
+              </p>
+            </div>
+          </div>
+
+          <button type="button" className="btn btn-secondary btn-sm" style={{ backgroundColor: '#ffffff' }}>
+            View Report
+          </button>
         </div>
       )}
 
@@ -101,51 +144,57 @@ export const TodayView: React.FC<TodayViewProps> = ({ onNavigate }) => {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontWeight: 700
+              fontWeight: 800,
+              fontSize: '1rem'
             }}
           >
-            {stats.adherencePercentage === 100 && stats.totalScheduled > 0 ? (
-              <Icon name="check" size={24} />
-            ) : (
-              <Icon name="pill" size={22} />
-            )}
+            {stats.adherencePercentage}%
           </div>
         </div>
 
-        <ProgressBar progress={stats.adherencePercentage} height={10} />
+        <ProgressBar
+          progress={stats.adherencePercentage}
+          height={10}
+          color={stats.adherencePercentage === 100 ? 'var(--success-solid)' : 'var(--primary-600)'}
+        />
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.75rem', fontSize: '0.8125rem', color: 'var(--slate-600)' }}>
+          <span>Scheduled: <strong>{stats.totalScheduled}</strong></span>
+          <span>Taken: <strong>{stats.takenCount}</strong></span>
+          <span>Pending: <strong>{stats.pendingCount}</strong></span>
+        </div>
       </div>
 
       {/* 2. Low Supply Alerts Section */}
       {lowSupplyMedications.length > 0 && (
         <section aria-labelledby="low-supply-heading">
-          <div className="section-header">
+          <div className="section-header" style={{ marginBottom: '0.75rem' }}>
             <h3 id="low-supply-heading" className="section-title" style={{ color: 'var(--warning-text)' }}>
               <Icon name="alert" size={18} />
-              <span>Medications Running Low ({lowSupplyMedications.length})</span>
+              <span>Supply Alerts ({lowSupplyMedications.length})</span>
             </h3>
             <button
               type="button"
               className="btn btn-ghost btn-sm"
               onClick={() => onNavigate('refills')}
             >
-              Manage Refills →
+              View Refill Center →
             </button>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          <div className="grid-cards">
             {lowSupplyMedications.map((med) => (
               <SupplyAlertCard
                 key={med.id}
                 medication={med}
                 onRefill={(id) => refillMedication(id, med.supply.refillQuantity || 30)}
-                onNavigateRefills={() => onNavigate('refills')}
               />
             ))}
           </div>
         </section>
       )}
 
-      {/* 3. Today's Scheduled Medications */}
+      {/* 3. Today's Scheduled Regimen Section */}
       <section aria-labelledby="today-doses-heading">
         <div className="section-header">
           <h3 id="today-doses-heading" className="section-title">
@@ -232,7 +281,10 @@ export const TodayView: React.FC<TodayViewProps> = ({ onNavigate }) => {
                 onTake={takeDose}
                 onSkip={skipDose}
                 onUndo={undoDose}
-                onSelect={() => onNavigate('medications')}
+                onSelect={(medId) => {
+                  const found = medications.find((m) => m.id === medId);
+                  if (found) setSelectedMedForDetails(found);
+                }}
               />
             ))}
           </div>
@@ -265,8 +317,14 @@ export const TodayView: React.FC<TodayViewProps> = ({ onNavigate }) => {
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div>
-                      <h4 style={{ fontSize: '1.0625rem', fontWeight: 700 }}>{med.name}</h4>
+                    <div
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => setSelectedMedForDetails(med)}
+                      title="Click to view info and food warnings"
+                    >
+                      <h4 style={{ fontSize: '1.0625rem', fontWeight: 700, color: 'var(--primary-900)' }}>
+                        {med.name} ℹ️
+                      </h4>
                       <span className="text-xs text-muted">
                         {med.strength} · {med.doseAmount} {med.doseUnit}{med.doseAmount > 1 ? 's' : ''}
                       </span>
@@ -286,14 +344,25 @@ export const TodayView: React.FC<TodayViewProps> = ({ onNavigate }) => {
                       {med.supply.currentSupply} {med.supply.supplyUnit} left (~{daysRemaining} days)
                     </span>
 
-                    <button
-                      type="button"
-                      className="btn btn-take btn-sm"
-                      onClick={() => handleLogPrn(med.id, med.name)}
-                    >
-                      <Icon name="plus" size={14} />
-                      <span>Log Dose</span>
-                    </button>
+                    <div style={{ display: 'flex', gap: '0.375rem' }}>
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => setSelectedMedForDetails(med)}
+                        title="View info and food restrictions"
+                      >
+                        Info
+                      </button>
+
+                      <button
+                        type="button"
+                        className="btn btn-take btn-sm"
+                        onClick={() => handleLogPrn(med.id, med.name)}
+                      >
+                        <Icon name="plus" size={14} />
+                        <span>Log Dose</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
@@ -301,6 +370,20 @@ export const TodayView: React.FC<TodayViewProps> = ({ onNavigate }) => {
           </div>
         </section>
       )}
+
+      {/* Medication Details & Warnings Modal */}
+      <MedicationDetailsModal
+        medication={selectedMedForDetails}
+        isOpen={selectedMedForDetails !== null}
+        onClose={() => setSelectedMedForDetails(null)}
+      />
+
+      {/* Safety & Interactions Modal */}
+      <InteractionCheckerModal
+        medications={medications}
+        isOpen={isInteractionModalOpen}
+        onClose={() => setIsInteractionModalOpen(false)}
+      />
     </div>
   );
 };
