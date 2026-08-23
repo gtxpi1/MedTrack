@@ -60,14 +60,80 @@ export class MedicationService {
   async addMedication(data: Omit<Medication, 'id' | 'createdAt' | 'updatedAt'>): Promise<Medication> {
     const now = new Date().toISOString();
     const id = `med-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+    const schedId = data.schedule?.id || `sched-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+    const todayStr = getIsoDateString();
+
+    // Ensure scheduledTimes has appropriate defaults if not set
+    let times = [...(data.schedule?.scheduledTimes || [])];
+    if (times.length === 0 && data.frequency !== 'as-needed') {
+      if (data.frequency === 'twice-daily') times = ['08:00', '20:00'];
+      else if (data.frequency === 'three-times-daily') times = ['08:00', '13:00', '20:00'];
+      else if (data.frequency === 'four-times-daily') times = ['08:00', '12:00', '16:00', '20:00'];
+      else times = ['08:00'];
+    }
+
     const newMed: Medication = {
       ...data,
       id,
+      schedule: {
+        ...data.schedule,
+        id: schedId,
+        medicationId: id,
+        frequency: data.frequency,
+        scheduledTimes: times,
+        startDate: data.schedule?.startDate || todayStr,
+        isActive: true
+      },
+      isActive: true,
       createdAt: now,
       updatedAt: now
     };
+
     await this.medStorage.save(newMed);
+
+    // If regular scheduled medication, generate today's dose slots immediately
+    if (newMed.frequency !== 'as-needed' && times.length > 0) {
+      const allDoses = await this.doseStorage.getAll();
+      const newDoses: DoseRecord[] = [];
+
+      for (const timeStr of times) {
+        if (!timeStr) continue;
+        const timeClean = timeStr.trim();
+        const scheduledTimeIso = `${todayStr}T${timeClean.length === 5 ? timeClean + ':00' : timeClean}`;
+        const timeKey = `${id}_${scheduledTimeIso}`;
+
+        const exists = allDoses.some((d) => `${d.medicationId}_${d.scheduledTime}` === timeKey);
+        if (!exists) {
+          const timeOfDay: TimeOfDay = getTimeOfDayFromTimeStr(timeClean);
+          newDoses.push({
+            id: `dose-${todayStr}-${id}-${timeClean.replace(/[^0-9]/g, '')}`,
+            medicationId: id,
+            scheduleId: schedId,
+            scheduledTime: scheduledTimeIso,
+            timeOfDay,
+            status: 'scheduled',
+            doseAmount: newMed.doseAmount,
+            doseUnit: newMed.doseUnit,
+            createdAt: now,
+            updatedAt: now
+          });
+        }
+      }
+
+      if (newDoses.length > 0) {
+        await this.doseStorage.saveAll([...allDoses, ...newDoses]);
+      }
+    }
+
     return newMed;
+  }
+
+  /**
+   * Get all active as-needed (PRN) medications
+   */
+  async getAsNeededMedications(): Promise<Medication[]> {
+    const meds = await this.getMedications(true);
+    return meds.filter((m) => m.frequency === 'as-needed');
   }
 
   /**

@@ -12,6 +12,7 @@ export interface AdherenceStats {
 export interface MedicationContextValue {
   medications: Medication[];
   todayDoses: ScheduledDoseItem[];
+  asNeededMedications: Medication[];
   lowSupplyMedications: Medication[];
   historyRecords: Array<DoseRecord & { medication?: Medication }>;
   isLoading: boolean;
@@ -44,6 +45,7 @@ export const MedicationProvider: React.FC<MedicationProviderProps> = ({
 }) => {
   const [medications, setMedications] = useState<Medication[]>([]);
   const [todayDoses, setTodayDoses] = useState<ScheduledDoseItem[]>([]);
+  const [asNeededMedications, setAsNeededMedications] = useState<Medication[]>([]);
   const [lowSupplyMedications, setLowSupplyMedications] = useState<Medication[]>([]);
   const [historyRecords, setHistoryRecords] = useState<Array<DoseRecord & { medication?: Medication }>>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -51,15 +53,17 @@ export const MedicationProvider: React.FC<MedicationProviderProps> = ({
   const refresh = useCallback(async () => {
     try {
       await service.initialize();
-      const [allMeds, doses, lowSupply, history] = await Promise.all([
+      const [allMeds, doses, prnMeds, lowSupply, history] = await Promise.all([
         service.getMedications(false),
         service.getTodayScheduledDoses(),
+        service.getAsNeededMedications(),
         service.getLowSupplyMedications(),
         service.getDoseHistory(50)
       ]);
 
       setMedications(allMeds);
       setTodayDoses(doses);
+      setAsNeededMedications(prnMeds);
       setLowSupplyMedications(lowSupply);
       setHistoryRecords(history);
     } catch (err) {
@@ -145,6 +149,7 @@ export const MedicationProvider: React.FC<MedicationProviderProps> = ({
       value={{
         medications,
         todayDoses,
+        asNeededMedications,
         lowSupplyMedications,
         historyRecords,
         isLoading,
